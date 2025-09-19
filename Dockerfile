@@ -13,6 +13,16 @@ RUN npm install
 # Copiar el código fuente
 COPY . .
 
+# Variables de entorno para configuración del servidor
+ARG NEXT_PUBLIC_SERVER_IP
+ARG NEXT_PUBLIC_SERVER_PORT
+ARG NEXT_PUBLIC_API_URL
+
+# Establecer variables de entorno
+ENV NEXT_PUBLIC_SERVER_IP=${NEXT_PUBLIC_SERVER_IP:-localhost}
+ENV NEXT_PUBLIC_SERVER_PORT=${NEXT_PUBLIC_SERVER_PORT:-3001}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+
 # Construir la aplicación
 RUN npm run build
 
