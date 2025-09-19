@@ -34,17 +34,17 @@ export default function Sidebar() {
   const quickStats = [
     { 
       label: 'Tickets Abiertos', 
-      value: dashboardData?.stats?.tickets_abiertos || 0, 
+      value: (dashboardData as any)?.stats?.tickets_abiertos || 0, 
       color: 'text-red-500' 
     },
     { 
       label: 'Tickets Asignados', 
-      value: dashboardData?.stats?.tickets_asignados || 0, 
+      value: (dashboardData as any)?.stats?.tickets_asignados || 0, 
       color: 'text-yellow-500' 
     },
     { 
       label: 'Tickets Resueltos Hoy', 
-      value: dashboardData?.stats?.tickets_resueltos || 0, 
+      value: (dashboardData as any)?.stats?.tickets_resueltos || 0, 
       color: 'text-green-500' 
     },
   ];
