@@ -27,9 +27,9 @@ ChartJS.register(
 );
 
 export default function DashboardPage() {
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('7');
   const [chartFilter, setChartFilter] = useState('7');
   const [agentFilter, setAgentFilter] = useState('7');
