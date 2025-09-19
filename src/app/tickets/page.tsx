@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Download, Eye, Edit, Trash2, Filter } from 'lucide-react';
 
 export default function TicketsPage() {
-  const [tickets, setTickets] = useState([]);
+  const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('todos');
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,7 +34,7 @@ export default function TicketsPage() {
     }
   };
 
-  const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = tickets.filter((ticket: any) => {
     const matchesSearch = ticket.solicitud?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.solicitante?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = selectedFilter === 'todos' || ticket.categoria === selectedFilter;
@@ -45,7 +45,7 @@ export default function TicketsPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTickets = filteredTickets.slice(startIndex, startIndex + itemsPerPage);
 
-  const getStatusColor = (categoria) => {
+  const getStatusColor = (categoria: any) => {
     return 'text-gray-900';
   };
 
@@ -179,7 +179,7 @@ export default function TicketsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedTickets.map((ticket, index) => (
+              {paginatedTickets.map((ticket: any, index: number) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
