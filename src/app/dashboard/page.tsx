@@ -70,7 +70,7 @@ export default function DashboardPage() {
       const result = await response.json();
       
       if (result.success) {
-        setDashboardData(prev => ({
+        setDashboardData((prev: any) => ({
           ...prev,
           ticketsTrend: result.data.ticketsTrend
         }));
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       const result = await response.json();
       
       if (result.success) {
-        setDashboardData(prev => ({
+        setDashboardData((prev: any) => ({
           ...prev,
           agentAttendances: result.data.agentAttendances
         }));
