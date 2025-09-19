@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTicketStats, getRecentTickets, getStatsByStatus, getTicketsByAgent, getTicketsByArea, getTicketsTrend, getAgentAttendances, getTopAreas, getTopCategorias, getTopUsuarios } from '@/lib/database';
+import { getTicketStats, getRecentTickets, getStatsByStatus, getTicketsByAgent, getTicketsByArea, getTicketsTrend, getAgentAttendances, getTopAreas, getTopCategorias, getTopUsuarios } from '@/lib/database.mjs';
 
 export async function GET(request) {
   try {

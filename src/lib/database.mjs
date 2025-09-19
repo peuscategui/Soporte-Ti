@@ -1,4 +1,5 @@
-const { Pool } = require('pg');
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // Configuración de la base de datos
 const pool = new Pool({
@@ -258,7 +259,7 @@ async function getTopUsuarios(days = 7) {
   }
 }
 
-module.exports = {
+export {
   pool,
   getTicketStats,
   getRecentTickets,
