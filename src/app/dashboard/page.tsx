@@ -135,21 +135,21 @@ export default function DashboardPage() {
           },
           {
             title: 'Top 3 Usuarios',
-            value: dashboardData?.topUsuarios?.slice(0, 3).map((user, index) => `${index + 1}. ${user.solicitante}`).join('\n') || 'Sin datos',
+            value: dashboardData?.topUsuarios?.slice(0, 3).map((user: any, index: number) => `${index + 1}. ${user.solicitante}`).join('\n') || 'Sin datos',
             change: 'Más atendidos',
             changeType: 'neutral',
             icon: Users,
           },
           {
             title: 'Top 3 Áreas',
-            value: dashboardData?.topAreas?.slice(0, 3).map((area, index) => `${index + 1}. ${area.area}`).join('\n') || 'Sin datos',
+            value: dashboardData?.topAreas?.slice(0, 3).map((area: any, index: number) => `${index + 1}. ${area.area}`).join('\n') || 'Sin datos',
             change: 'Más atendidas',
             changeType: 'neutral',
             icon: Building2,
           },
           {
             title: 'Top 3 Categorías',
-            value: dashboardData?.topCategorias?.slice(0, 3).map((cat, index) => `${index + 1}. ${cat.categoria}`).join('\n') || 'Sin datos',
+            value: dashboardData?.topCategorias?.slice(0, 3).map((cat: any, index: number) => `${index + 1}. ${cat.categoria}`).join('\n') || 'Sin datos',
             change: 'Más frecuentes',
             changeType: 'neutral',
             icon: Calendar,
@@ -181,15 +181,15 @@ export default function DashboardPage() {
       };
     }
 
-    const labels = dashboardData.ticketsTrend.map(item => 
+    const labels = dashboardData.ticketsTrend.map((item: any) => 
       new Date(item.fecha).toLocaleDateString('es-ES', { 
         month: 'short', 
         day: 'numeric' 
       })
     );
     
-    const totalTickets = dashboardData.ticketsTrend.map(item => item.total_tickets);
-    const resolvedTickets = dashboardData.ticketsTrend.map(item => item.tickets_resueltos);
+    const totalTickets = dashboardData.ticketsTrend.map((item: any) => item.total_tickets);
+    const resolvedTickets = dashboardData.ticketsTrend.map((item: any) => item.tickets_resueltos);
 
     return {
       labels,
@@ -228,8 +228,8 @@ export default function DashboardPage() {
     console.log('Datos de agentes en frontend:', dashboardData.agentAttendances);
 
     // Los datos ya vienen agrupados por agente desde la base de datos
-    const labels = dashboardData.agentAttendances.map(item => item.agente);
-    const data = dashboardData.agentAttendances.map(item => Number(item.atenciones));
+    const labels = dashboardData.agentAttendances.map((item: any) => item.agente);
+    const data = dashboardData.agentAttendances.map((item: any) => Number(item.atenciones));
 
     console.log('Labels:', labels);
     console.log('Data:', data);
@@ -244,7 +244,7 @@ export default function DashboardPage() {
       datasets: [{
         label: 'Atenciones Totales',
         data: data,
-        backgroundColor: colors.slice(0, labels.length).map(color => color + '80'),
+        backgroundColor: colors.slice(0, labels.length).map((color: string) => color + '80'),
         borderColor: colors.slice(0, labels.length),
         borderWidth: 2,
         borderRadius: 4,
