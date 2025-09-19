@@ -272,7 +272,7 @@ export default function DashboardPage() {
         beginAtZero: true,
         ticks: {
           stepSize: 1,
-          callback: function(value) {
+          callback: function(value: any) {
             return Number.isInteger(value) ? value : '';
           }
         },
@@ -319,7 +319,7 @@ export default function DashboardPage() {
       
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat, index) => {
+        {statCards.map((stat: any, index: number) => {
           const Icon = stat.icon;
           return (
             <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 border-t-4 border-t-primary p-6 hover:shadow-xl transition-all duration-300">
