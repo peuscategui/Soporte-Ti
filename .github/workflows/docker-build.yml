@@ -1,0 +1,30 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      run: |
+        docker build -t soporte-efc:latest .
+        docker build -t soporte-efc:${{ github.sha }} .
+    
+    - name: Test Docker image
+      run: |
+        docker run -d --name test-container -p 3001:3001 soporte-efc:latest
+        sleep 10
+        curl -f http://localhost:3001/api/health || exit 1
+        docker stop test-container
+        docker rm test-container

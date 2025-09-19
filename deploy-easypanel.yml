@@ -1,0 +1,32 @@
+# Configuración para despliegue en EasyPanel
+# Copiar este contenido en la configuración de Docker Compose de EasyPanel
+
+version: '3.8'
+
+services:
+  soporte-efc:
+    image: soporte-efc:latest
+    container_name: efc-soporte-ti
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_HOST=192.168.40.129
+      - DB_PORT=5432
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - efc-network
+
+networks:
+  efc-network:
+    driver: bridge
