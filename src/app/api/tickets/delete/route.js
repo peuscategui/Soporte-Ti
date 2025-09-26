@@ -5,6 +5,15 @@ export async function DELETE(request) {
   try {
     const body = await request.json();
     const { solicitante, solicitud, categoria, agente, area, sede } = body;
+    
+    console.log('🔍 DELETE request recibida con datos:', {
+      solicitante,
+      solicitud,
+      categoria,
+      agente,
+      area,
+      sede
+    });
 
     if (!solicitante || !solicitud || !categoria) {
       return NextResponse.json(
@@ -28,7 +37,11 @@ export async function DELETE(request) {
       RETURNING *
     `;
     
+    console.log('🔍 Ejecutando query de eliminación con parámetros:', [solicitante, solicitud, categoria, agente, area, sede]);
+    
     const result = await query(queryText, [solicitante, solicitud, categoria, agente, area, sede]);
+    
+    console.log('🔍 Resultado de la eliminación:', result.rows.length, 'registros afectados');
     
     if (result.rows.length === 0) {
       return NextResponse.json(
