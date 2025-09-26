@@ -341,9 +341,9 @@ export default function InfraestructuraPage() {
     <div className="flex-1 p-8 min-h-screen bg-white">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#283447] mb-4">Infraestructura</h1>
+        <h1 className="text-2xl font-bold text-[#283447] mb-4">Registros de Infraestructura</h1>
         <div className="flex items-center space-x-6 text-sm text-gray-600">
-          <span>Total de elementos: {infraestructura.length}</span>
+          <span>Total de registros: {infraestructura.length}</span>
         </div>
       </div>
 

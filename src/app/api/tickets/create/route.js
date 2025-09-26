@@ -30,11 +30,10 @@ export async function POST(request) {
         categoria, 
         area, 
         solicitante, 
-        agente_asignado, 
+        agente, 
         sede, 
-        fecha_creacion,
-        estado
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'Abierto')
+        "Fecha de Registro"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `, [
       solicitud,
