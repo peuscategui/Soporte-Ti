@@ -7,11 +7,12 @@ export async function GET() {
       SELECT 
         ROW_NUMBER() OVER (ORDER BY "Fecha de Registro" DESC) as id,
         "Fecha de Registro" as fecha_creacion,
-        solicitante,
-        solicitud,
-        categoria,
-        agente,
-        area
+        COALESCE(solicitante, '') as solicitante,
+        COALESCE(solicitud, '') as solicitud,
+        COALESCE(categoria, '') as categoria,
+        COALESCE(agente, '') as agente,
+        COALESCE(area, '') as area,
+        COALESCE(sede, '') as sede
       FROM public.tksoporte 
       WHERE "Fecha de Registro" IS NOT NULL
       ORDER BY "Fecha de Registro" DESC;

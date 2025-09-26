@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTicketStats, getRecentTickets, getStatsByStatus, getTicketsByAgent, getTicketsByArea, getTicketsTrend, getAgentAttendances, getTopAreas, getTopCategorias, getTopUsuarios } from '@/lib/database.mjs';
+import { getTicketStats, getRecentTickets, getStatsByStatus, getTicketsByAgent, getTicketsByArea, getTicketsTrend, getAgentAttendances, getSedeAttendances, getTopAreas, getTopCategorias, getTopUsuarios, getInfraestructuraStats } from '@/lib/database.mjs';
 
 export async function GET(request) {
   try {
@@ -25,10 +25,16 @@ export async function GET(request) {
     // Obtener atenciones por agente
     const agentAttendances = await getAgentAttendances(days);
     
+    // Obtener atenciones por sede
+    const sedeAttendances = await getSedeAttendances(days);
+    
     // Obtener top 3 áreas, categorías y usuarios
     const topAreas = await getTopAreas(days);
     const topCategorias = await getTopCategorias(days);
     const topUsuarios = await getTopUsuarios(days);
+    
+    // Obtener estadísticas de infraestructura
+    const infraestructuraStats = await getInfraestructuraStats(days);
     
     return NextResponse.json({
       success: true,
@@ -44,9 +50,11 @@ export async function GET(request) {
         ticketsByArea,
         ticketsTrend,
         agentAttendances,
+        sedeAttendances,
         topAreas,
         topCategorias,
         topUsuarios,
+        infraestructuraStats,
       }
     });
   } catch (error) {
