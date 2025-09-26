@@ -660,8 +660,20 @@ async function getAllCategorias() {
   }
 }
 
+// Función genérica para ejecutar queries
+async function query(text, params = []) {
+  try {
+    const result = await pool.query(text, params);
+    return result;
+  } catch (error) {
+    console.error('Error ejecutando query:', error);
+    throw error;
+  }
+}
+
 export {
   pool,
+  query,
   getTicketStats,
   getRecentTickets,
   getStatsByStatus,
