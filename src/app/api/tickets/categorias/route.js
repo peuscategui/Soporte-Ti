@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllCategorias } from '@/lib/database.mjs';
+import { getAllCategorias } from '../../../../lib/database.mjs';
 
 export async function GET() {
   try {

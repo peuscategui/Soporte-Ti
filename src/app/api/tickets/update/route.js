@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/database.mjs';
+import { query } from '../../../../lib/database.mjs';
 
 export async function PUT(request) {
   try {
@@ -19,7 +19,7 @@ export async function PUT(request) {
 
     // Usar los datos originales para identificar el registro de manera única
     // Esto es más estable que usar ROW_NUMBER()
-    const query = `
+    const queryText = `
       UPDATE public.tksoporte 
       SET 
         solicitante = $1,
@@ -54,7 +54,7 @@ export async function PUT(request) {
       originalData?.fecha_creacion || new Date().toISOString()
     ];
     
-    const result = await pool.query(query, values);
+    const result = await query(queryText, values);
     
     if (result.rows.length === 0) {
       return NextResponse.json(

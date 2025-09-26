@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/database.mjs';
+import { query } from '../../../../lib/database.mjs';
 
 export async function DELETE(request) {
   try {
@@ -17,7 +17,7 @@ export async function DELETE(request) {
     }
 
     // Eliminar ticket usando una combinación única de campos
-    const query = `
+    const queryText = `
       DELETE FROM public.tksoporte 
       WHERE solicitante = $1 
       AND solicitud = $2 
@@ -28,7 +28,7 @@ export async function DELETE(request) {
       RETURNING *
     `;
     
-    const result = await pool.query(query, [solicitante, solicitud, categoria, agente, area, sede]);
+    const result = await query(queryText, [solicitante, solicitud, categoria, agente, area, sede]);
     
     if (result.rows.length === 0) {
       return NextResponse.json(

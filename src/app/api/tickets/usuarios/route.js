@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllUsuarios } from '@/lib/database.mjs';
+import { getAllUsuarios } from '../../../../lib/database.mjs';
 
 export async function GET() {
   try {

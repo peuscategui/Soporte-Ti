@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllAreas } from '@/lib/database.mjs';
+import { getAllAreas } from '../../../../lib/database.mjs';
 
 export async function GET() {
   try {
