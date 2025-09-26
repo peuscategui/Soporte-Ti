@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllAgentes } from '../../../../lib/database.mjs';
+import { getAllAgentes } from '../../../../../lib/database.mjs';
 
 export async function GET() {
   try {

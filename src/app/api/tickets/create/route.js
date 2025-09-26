@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '../../../../lib/database.mjs';
+import { query } from '../../../../../lib/database.mjs';
 
 export async function POST(request) {
   try {
