@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { pool } from '../../lib/database.mjs';
+import { query } from '../../lib/database.mjs';
 
 export async function GET() {
   try {
-    const query = `
+    const queryText = `
       SELECT 
         ROW_NUMBER() OVER (ORDER BY "Fecha de Registro" DESC) as id,
         "Fecha de Registro" as fecha_creacion,
@@ -18,7 +18,7 @@ export async function GET() {
       ORDER BY "Fecha de Registro" DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await query(queryText);
     
     return NextResponse.json({
       success: true,
