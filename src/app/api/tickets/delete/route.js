@@ -26,14 +26,15 @@ export async function DELETE(request) {
     }
 
     // Eliminar ticket usando una combinación única de campos
+    // Manejar tanto valores NULL como cadenas vacías
     const queryText = `
       DELETE FROM public.tksoporte 
       WHERE solicitante = $1 
       AND solicitud = $2 
       AND categoria = $3
-      AND (agente = $4 OR ($4 IS NULL AND agente IS NULL))
-      AND (area = $5 OR ($5 IS NULL AND area IS NULL))
-      AND (sede = $6 OR ($6 IS NULL AND sede IS NULL))
+      AND (agente = $4 OR ($4 = '' AND agente IS NULL) OR ($4 IS NULL AND agente IS NULL))
+      AND (area = $5 OR ($5 = '' AND area IS NULL) OR ($5 IS NULL AND area IS NULL))
+      AND (sede = $6 OR ($6 = '' AND sede IS NULL) OR ($6 IS NULL AND sede IS NULL))
       RETURNING *
     `;
     
