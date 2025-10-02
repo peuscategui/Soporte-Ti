@@ -1,22 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, User, LogOut, Settings, ChevronDown, HeadphonesIcon, Wrench } from 'lucide-react';
+import { Bell, User, LogOut, Settings, ChevronDown, HeadphonesIcon, Wrench, Shield } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import PermissionQuickSettings from '../PermissionQuickSettings';
 
 export default function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-
-  const user = {
-    fullName: 'Agente de Soporte',
-    role: 'Soporte Técnico',
-    email: 'agente@efc.com.pe',
-  };
+  const [showPermissionSettings, setShowPermissionSettings] = useState(false);
+  const { user, loading, logout } = useAuth();
+  const { userRole, isAdmin, isAgent, isSupervisor } = usePermissions();
 
   const notifications = [
     { id: 1, message: 'Nuevo ticket asignado: #12345', time: 'Hace 5 min' },
     { id: 2, message: 'Ticket #9876 resuelto por Juan', time: 'Hace 1 hora' },
   ];
+
 
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6">
@@ -24,7 +25,7 @@ export default function Header() {
         <div className="w-8 h-8 bg-[#283447] rounded-lg flex items-center justify-center">
           <Wrench className="w-5 h-5 text-white" />
         </div>
-        <h1 className="text-xl font-bold text-gray-800">Atenciones de Soporte TI</h1>
+        <h1 className="text-xl font-bold text-gray-800">Seguimiento de atenciones</h1>
       </div>
 
       <div className="flex items-center space-x-3">
@@ -69,8 +70,19 @@ export default function Header() {
               <span className="text-white text-sm font-bold">4</span>
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {loading ? 'Cargando...' : (user?.fullName || 'Usuario')}
+              </p>
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                {loading ? 'Cargando...' : (
+                  <>
+                    {isAdmin && <Shield className="h-3 w-3 text-red-500" />}
+                    {isSupervisor && <Shield className="h-3 w-3 text-blue-500" />}
+                    {isAgent && <User className="h-3 w-3 text-green-500" />}
+                    {userRole?.name || user?.role || 'Usuario'}
+                  </>
+                )}
+              </p>
             </div>
             <ChevronDown className="h-4 w-4 text-gray-500" />
           </button>
@@ -79,13 +91,25 @@ export default function Header() {
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
               <div className="p-2">
                 <div className="px-3 py-2 text-sm text-gray-500 border-b border-gray-100">
-                  {user.email}
+                  {loading ? 'Cargando...' : (user?.email || 'usuario@efc.com.pe')}
                 </div>
+                {(isAdmin || isSupervisor) && (
+                  <button 
+                    onClick={() => setShowPermissionSettings(true)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurar Permisos
+                  </button>
+                )}
                 <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
                   <Settings className="h-4 w-4 mr-2" />
                   Configuración
                 </button>
-                <button className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center">
+                <button 
+                  onClick={logout}
+                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center"
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   Cerrar Sesión
                 </button>
@@ -94,6 +118,12 @@ export default function Header() {
           )}
         </div>
       </div>
+      
+      {/* Permission Quick Settings Modal */}
+      <PermissionQuickSettings
+        isOpen={showPermissionSettings}
+        onClose={() => setShowPermissionSettings(false)}
+      />
     </header>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Ticket, 
   Users, 
@@ -42,6 +43,7 @@ ChartJS.register(
 );
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,23 +99,40 @@ export default function DashboardPage() {
     );
   }
 
+  // Función para manejar clics en las tarjetas
+  const handleCardClick = (cardType: string) => {
+    const baseUrl = '/tickets';
+    
+    switch (cardType) {
+      case 'total':
+        // Todos los tickets sin filtros adicionales
+        router.push(`${baseUrl}?filter=all&period=${periodFilter}`);
+        break;
+      case 'soporte':
+        // Tickets de soporte técnico - mostrar todos sin filtros específicos
+        router.push(`${baseUrl}?type=soporte&period=${periodFilter}`);
+        break;
+      case 'infraestructura':
+        // Tickets de infraestructura
+        router.push(`${baseUrl}?filter=infraestructura&period=${periodFilter}`);
+        break;
+      case 'abiertos':
+        // Tickets abiertos
+        router.push(`${baseUrl}?estado=Abierto&period=${periodFilter}`);
+        break;
+      case 'proceso':
+        // Tickets en proceso
+        router.push(`${baseUrl}?estado=En Proceso&period=${periodFilter}`);
+        break;
+      default:
+        router.push(baseUrl);
+    }
+  };
+
         // Preparar datos para las tarjetas de estadísticas
         const statCards = [
           {
-            title: 'Tickets de Soporte',
-            value: dashboardData?.stats?.tickets_soporte?.toString() || '0',
-            change: `Últimos ${periodFilter} días`,
-            changeType: 'positive',
-            icon: Ticket,
-          },
-          {
-            title: 'Tickets de Infraestructura',
-            value: dashboardData?.infraestructuraStats?.total_infraestructura?.toString() || '0',
-            change: `Últimos ${periodFilter} días`,
-            changeType: 'positive',
-            icon: Building2,
-          },
-          {
+            id: 'total',
             title: 'Total de Tickets',
             value: dashboardData?.stats?.total_tickets?.toString() || '0',
             change: `Últimos ${periodFilter} días`,
@@ -121,11 +140,36 @@ export default function DashboardPage() {
             icon: Calendar,
           },
           {
-            title: 'Tickets Resueltos',
-            value: dashboardData?.stats?.tickets_resueltos?.toString() || '0',
-            change: 'Completados',
+            id: 'soporte',
+            title: 'Tickets de Soporte',
+            value: dashboardData?.stats?.tickets_soporte?.toString() || '0',
+            change: `Últimos ${periodFilter} días`,
             changeType: 'positive',
-            icon: Activity,
+            icon: Ticket,
+          },
+          {
+            id: 'infraestructura',
+            title: 'Tickets de Infraestructura',
+            value: dashboardData?.infraestructuraStats?.total_infraestructura?.toString() || '0',
+            change: `Últimos ${periodFilter} días`,
+            changeType: 'positive',
+            icon: Building2,
+          },
+          {
+            id: 'abiertos',
+            title: 'Tickets Abiertos',
+            value: dashboardData?.stats?.tickets_abiertos?.toString() || '0',
+            change: 'Requieren atención',
+            changeType: 'negative',
+            icon: XCircle,
+          },
+          {
+            id: 'proceso',
+            title: 'Tickets en Proceso',
+            value: dashboardData?.stats?.tickets_en_proceso?.toString() || '0',
+            change: 'En desarrollo',
+            changeType: 'warning',
+            icon: Clock,
           },
         ];
 
@@ -368,6 +412,41 @@ export default function DashboardPage() {
     },
   };
 
+  // Opciones específicas para el gráfico de agentes con onClick
+  const agentChartOptions = {
+    ...chartOptions,
+    onClick: (event: any, elements: any) => {
+      if (elements.length > 0) {
+        const elementIndex = elements[0].index;
+        const agentName = agentChartData.labels[elementIndex];
+        
+        // Navegar a tickets filtrados por agente
+        const baseUrl = '/tickets';
+        router.push(`${baseUrl}?agente=${encodeURIComponent(agentName)}&period=${periodFilter}`);
+      }
+    },
+    onHover: (event: any, elements: any) => {
+      if (elements.length > 0) {
+        event.native.target.style.cursor = 'pointer';
+      } else {
+        event.native.target.style.cursor = 'default';
+      }
+    },
+    plugins: {
+      ...chartOptions.plugins,
+      tooltip: {
+        callbacks: {
+          title: function(context: any) {
+            return context[0].label;
+          },
+          label: function(context: any) {
+            return `Atenciones Totales: ${context.parsed.y.toLocaleString()}`;
+          }
+        }
+      }
+    }
+  };
+
   // Opciones específicas para gráficos horizontales
   const horizontalChartOptions = {
     responsive: true,
@@ -412,7 +491,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 p-8 min-h-screen" style={{ backgroundColor: '#f8f9fa' }}>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard de Soporte</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard general</h1>
         <p className="text-gray-600">Resumen general del sistema de soporte técnico</p>
       </div>
 
@@ -443,11 +522,15 @@ export default function DashboardPage() {
       </div>
       
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {statCards.map((stat: any, index: number) => {
           const Icon = stat.icon;
           return (
-            <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 border-t-4 border-t-primary p-6 hover:shadow-xl transition-all duration-300">
+            <div 
+              key={index} 
+              onClick={() => handleCardClick(stat.id)}
+              className="bg-white rounded-xl shadow-lg border border-gray-100 border-t-4 border-t-primary p-6 hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105"
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="p-3 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-md">
                   <Icon className="h-6 w-6 text-white" />
@@ -457,7 +540,11 @@ export default function DashboardPage() {
                     ? 'bg-green-100 text-green-700' 
                     : stat.changeType === 'neutral'
                     ? 'bg-gray-100 text-gray-700'
-                    : 'bg-red-100 text-red-700'
+                    : stat.changeType === 'negative'
+                    ? 'bg-red-100 text-red-700'
+                    : stat.changeType === 'warning'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-blue-100 text-blue-700'
                 }`}>
                   {stat.change}
                 </div>
@@ -500,7 +587,7 @@ export default function DashboardPage() {
           </div>
           <div className="p-6">
             <div className="h-64">
-              <Bar data={agentChartData} options={chartOptions} />
+              <Bar data={agentChartData} options={agentChartOptions} />
             </div>
           </div>
         </div>

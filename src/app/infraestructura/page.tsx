@@ -602,6 +602,7 @@ export default function InfraestructuraPage() {
                     <option value="Arequipa">Arequipa</option>
                     <option value="Chorrillos">Chorrillos</option>
                     <option value="Surquillo">Surquillo</option>
+                    <option value="Ambas Sedes">Ambas Sedes</option>
                   </select>
                 </div>
                 <div>
@@ -809,6 +810,7 @@ export default function InfraestructuraPage() {
                     <option value="Arequipa">Arequipa</option>
                     <option value="Chorrillos">Chorrillos</option>
                     <option value="Surquillo">Surquillo</option>
+                    <option value="Ambas Sedes">Ambas Sedes</option>
                   </select>
                 </div>
                 <div>

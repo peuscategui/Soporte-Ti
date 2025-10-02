@@ -16,9 +16,11 @@ async function getTicketStats(days = 7) {
     const query = `
       SELECT 
         COUNT(*) as total_tickets,
-        COUNT(CASE WHEN "Fecha de Registro" IS NOT NULL AND solicitante IS NOT NULL THEN 1 END) as tickets_abiertos,
+        -- Tickets por estado
+        COUNT(CASE WHEN COALESCE(estado, 'Cerrado') = 'Abierto' THEN 1 END) as tickets_abiertos,
+        COUNT(CASE WHEN COALESCE(estado, 'Cerrado') = 'En Proceso' THEN 1 END) as tickets_en_proceso,
+        COUNT(CASE WHEN COALESCE(estado, 'Cerrado') = 'Cerrado' THEN 1 END) as tickets_cerrados,
         COUNT(CASE WHEN agente IS NOT NULL AND agente != '' THEN 1 END) as tickets_asignados,
-        COUNT(CASE WHEN categoria = 'Resuelto' OR categoria = 'Cerrado' THEN 1 END) as tickets_resueltos,
         -- Tickets de Soporte (categorías generales de soporte técnico)
         COUNT(CASE WHEN categoria IN (
           'Hardware', 'Impresoras', 'Correo Electrónico', 'Sistema General', 
@@ -43,8 +45,9 @@ async function getTicketStats(days = 7) {
     return {
       total_tickets: 0,
       tickets_abiertos: 0,
+      tickets_en_proceso: 0,
+      tickets_cerrados: 0,
       tickets_asignados: 0,
-      tickets_resueltos: 0,
       tickets_soporte: 0,
       tickets_infraestructura: 0
     };
@@ -115,27 +118,9 @@ async function getTicketsByAgent(days = 7) {
     
     const result = await pool.query(query);
     
-    // Normalizar nombres de agentes para evitar duplicados por capitalización
-    const normalizedAgents = {};
-    
-    result.rows.forEach(row => {
-      // Normalizar el nombre: primera letra de cada palabra en mayúscula, resto en minúscula
-      const normalizedName = row.agente
-        .toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      
-      if (normalizedAgents[normalizedName]) {
-        normalizedAgents[normalizedName] += row.count;
-      } else {
-        normalizedAgents[normalizedName] = row.count;
-      }
-    });
-    
-    // Convertir de vuelta al formato esperado
-    const finalResult = Object.entries(normalizedAgents)
-      .map(([agente, count]) => ({ agente, count }))
+    // Usar los nombres tal como están en la base de datos (sin normalización)
+    const finalResult = result.rows
+      .map(row => ({ agente: row.agente, count: parseInt(row.count) }))
       .sort((a, b) => b.count - a.count);
     
     return finalResult;
@@ -210,30 +195,12 @@ async function getAgentAttendances(days = 7) {
     
     const result = await pool.query(query);
     
-    // Normalizar nombres de agentes para evitar duplicados por capitalización
-    const normalizedAgents = {};
-    
-    result.rows.forEach(row => {
-      // Normalizar el nombre: primera letra de cada palabra en mayúscula, resto en minúscula
-      const normalizedName = row.agente
-        .toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      
-      if (normalizedAgents[normalizedName]) {
-        normalizedAgents[normalizedName] += row.atenciones;
-      } else {
-        normalizedAgents[normalizedName] = row.atenciones;
-      }
-    });
-    
-    // Convertir de vuelta al formato esperado
-    const finalResult = Object.entries(normalizedAgents)
-      .map(([agente, atenciones]) => ({ agente, atenciones }))
+    // Usar los nombres tal como están en la base de datos (sin normalización)
+    const finalResult = result.rows
+      .map(row => ({ agente: row.agente, atenciones: parseInt(row.atenciones) }))
       .sort((a, b) => b.atenciones - a.atenciones);
     
-    console.log('Datos de agentes normalizados:', finalResult);
+    console.log('Datos de agentes:', finalResult);
     return finalResult;
   } catch (error) {
     console.error('Error obteniendo atenciones por agente:', error);
@@ -546,8 +513,16 @@ function normalizeAreas(areas) {
     'Control Presupuestal Y De Gestion': 'Control Presupuestal y de Gestión',
     'Control presupuestal y de gestión': 'Control Presupuestal y de Gestión',
     
-    // Cotizaciones
+    // Cotizaciones - Estandarizar todas las variaciones
     'Cotización Internacional': 'Cotizaciones Internacionales',
+    'Cotizaciones': 'Cotizaciones',
+    'Cotizaciones Internacionales': 'Cotizaciones Internacionales',
+    
+    // Ventas - Consolidar todas las variaciones en una sola opción
+    'Ventas': 'Ventas Y SAC',
+    'Ventas Y SAC': 'Ventas Y SAC',
+    'Ventas Y Sac': 'Ventas Y SAC',
+    'Ventas y SAC': 'Ventas Y SAC',
     
     // Facturación
     'Facturacion Y Cobranzas': 'Facturación y Cobranzas',
@@ -564,8 +539,14 @@ function normalizeAreas(areas) {
     'TI': 'Tecnología de la Información',
     'TIC': 'Tecnología de la Información',
     
-    // Logística
-    'Logística de Entrtada': 'Logística de Entrada',
+    // Logística - Estandarizar todas las variaciones
+    'Logistica De Entrada': 'Logística de Entrada',
+    'Logística de Entrada': 'Logística de Entrada',
+    'Logística de Entrtada': 'Logística de Entrada', // Typo fix
+    'Logistica De Produccion': 'Logística de Producción',
+    'Logística de Producción': 'Logística de Producción',
+    'Logistica De Salida': 'Logística de Salida',
+    'Logística de Salida': 'Logística de Salida',
     
     // Operaciones
     'Operacion Comercial Internacional': 'Operación Comercial Internacional',
@@ -582,18 +563,24 @@ function normalizeAreas(areas) {
     'E Commerce': 'E-Commerce'
   };
   
-  // Aplicar reglas de normalización
+  console.log('🔍 Áreas recibidas para normalizar:', areas);
+  
+  // Aplicar reglas de normalización y eliminar duplicados
   areas.forEach(area => {
-    const normalizedArea = normalizationRules[area] || area;
+    // Limpiar espacios en blanco y normalizar
+    const cleanArea = area.trim();
     
-    // Si ya existe, no duplicar
-    if (!areaMap.has(normalizedArea)) {
-      areaMap.set(normalizedArea, normalizedArea);
-    }
+    // Aplicar reglas de normalización
+    const normalizedArea = normalizationRules[cleanArea] || cleanArea;
+    
+    // Usar Map para eliminar duplicados automáticamente
+    areaMap.set(normalizedArea, normalizedArea);
   });
   
-  // Convertir a array y ordenar
-  return Array.from(areaMap.values()).sort();
+  const result = Array.from(areaMap.values()).sort();
+  console.log('✅ Áreas normalizadas:', result);
+  
+  return result;
 }
 
 async function getAllAgentes() {

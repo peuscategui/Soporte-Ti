@@ -1,17 +1,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Plus, Download, Eye, Edit, Trash2, Filter } from 'lucide-react';
 import { CATEGORIAS_ESTANDAR, getCategoriasSugeridas } from '../../constants/categorias';
 import CategoriaDropdown from '../../components/CategoriaDropdown';
+import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../hooks/useAuth';
+import ForceAdminButton from '../../components/ForceAdminButton';
 
 export default function TicketsPage() {
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const { permissions, canEditTicket, canViewTicket, filterTicketsByPermissions, getAvailableAgents } = usePermissions();
+  
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('solicitud');
   const [selectedSede, setSelectedSede] = useState('todas');
+  const [selectedEstado, setSelectedEstado] = useState('todos');
+  const [selectedAgente, setSelectedAgente] = useState('todos');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
@@ -123,6 +133,38 @@ export default function TicketsPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
+  // Función para formatear fecha de la BD a zona horaria de Lima
+  const formatDateFromDB = (dateString: string) => {
+    if (!dateString) return '-';
+    
+    // Crear fecha desde la BD (que está en UTC)
+    const fechaUTC = new Date(dateString);
+    
+    // Convertir a zona horaria de Lima
+    const fechaLima = new Date(fechaUTC.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+    
+    return fechaLima.toLocaleDateString('es-PE');
+  };
+
+  // Función para formatear fecha y hora de la BD a zona horaria de Lima
+  const formatDateTimeFromDB = (dateString: string) => {
+    if (!dateString) return '-';
+    
+    // Crear fecha desde la BD (que está en UTC)
+    const fechaUTC = new Date(dateString);
+    
+    // Convertir a zona horaria de Lima
+    const fechaLima = new Date(fechaUTC.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+    
+    return fechaLima.toLocaleDateString('es-PE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const [newTicket, setNewTicket] = useState({
     solicitante: '',
     solicitud: '',
@@ -130,6 +172,7 @@ export default function TicketsPage() {
     agente: '',
     area: '',
     sede: '',
+    estado: 'Cerrado',
     fechaCreacion: getLimaDateTime()
   });
 
@@ -146,6 +189,58 @@ export default function TicketsPage() {
     
     loadData();
   }, []);
+
+  // Manejar parámetros URL al cargar la página
+  useEffect(() => {
+    const filter = searchParams.get('filter');
+    const type = searchParams.get('type');
+    const estado = searchParams.get('estado');
+    const agente = searchParams.get('agente');
+    const period = searchParams.get('period');
+    
+    if (type === 'soporte') {
+      // Para tickets de soporte, no aplicar filtros específicos
+      // Solo limpiar filtros existentes y mostrar todos los tickets
+      setSearchTerm('');
+      setSelectedFilter('solicitud');
+      setSelectedEstado('todos');
+      setSelectedAgente('todos');
+      console.log('🎫 Mostrando todos los tickets de soporte');
+    } else if (filter) {
+      switch (filter) {
+        case 'infraestructura':
+          setSelectedFilter('area');
+          setSearchTerm('Tecnología de la Información');
+          break;
+        case 'all':
+          // Mostrar todos los tickets sin filtros adicionales
+          setSearchTerm('');
+          setSelectedFilter('solicitud');
+          setSelectedEstado('todos');
+          setSelectedAgente('todos');
+          break;
+      }
+    }
+    
+    if (estado) {
+      setSelectedEstado(estado);
+    }
+    
+    if (agente) {
+      setSelectedAgente(agente);
+      setSearchTerm('');
+      setSelectedFilter('solicitud');
+      setSelectedEstado('todos');
+      console.log('👨‍💼 Filtrando por agente:', agente);
+    }
+    
+    console.log('🔍 Parámetros URL:', { filter, type, estado, agente, period });
+  }, [searchParams]);
+
+  // Resetear página cuando cambien los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedFilter, selectedEstado, selectedAgente]);
 
   const fetchAreas = async () => {
     try {
@@ -230,7 +325,15 @@ export default function TicketsPage() {
       if (result.success) {
         console.log('📊 Tickets cargados:', result.data.length);
         console.log('📋 Primeros 3 tickets:', result.data.slice(0, 3));
-        setTickets(result.data);
+        
+        // Aplicar filtro de permisos del lado del cliente también
+        let filteredTickets = result.data;
+        if (user && !permissions.canViewAllTickets) {
+          filteredTickets = filterTicketsByPermissions(result.data);
+          console.log('🔒 Tickets filtrados por permisos:', filteredTickets.length);
+        }
+        
+        setTickets(filteredTickets);
       } else {
         setError(result.message || 'Error cargando tickets');
       }
@@ -243,45 +346,66 @@ export default function TicketsPage() {
   };
 
   const filteredTickets = tickets.filter((ticket: any) => {
-    if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    let matches = false;
-    
-    switch (selectedFilter) {
-      case 'solicitud':
-        matches = ticket.solicitud?.toLowerCase().includes(searchLower);
-        break;
-      case 'solicitante':
-        matches = ticket.solicitante?.toLowerCase().includes(searchLower);
-        break;
-      case 'categoria':
-        matches = ticket.categoria?.toLowerCase().includes(searchLower);
-        break;
-      case 'agente':
-        matches = ticket.agente?.toLowerCase().includes(searchLower);
-        break;
-      case 'area':
-        matches = ticket.area?.toLowerCase().includes(searchLower);
-        break;
-      case 'sede':
-        matches = ticket.sede?.toLowerCase().includes(searchLower);
-        console.log(`🔍 Buscando sede: "${searchLower}" en ticket: "${ticket.sede}" - Match: ${matches}`);
-        break;
-      default:
-        matches = ticket.solicitud?.toLowerCase().includes(searchLower) ||
-                 ticket.solicitante?.toLowerCase().includes(searchLower);
+    // Filtro por búsqueda de texto
+    let searchMatches = true;
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      
+      switch (selectedFilter) {
+        case 'solicitud':
+          searchMatches = ticket.solicitud?.toLowerCase().includes(searchLower) || false;
+          break;
+        case 'solicitante':
+          searchMatches = ticket.solicitante?.toLowerCase().includes(searchLower) || false;
+          break;
+        case 'categoria':
+          searchMatches = ticket.categoria?.toLowerCase().includes(searchLower) || false;
+          break;
+        case 'agente':
+          searchMatches = ticket.agente?.toLowerCase().includes(searchLower) || false;
+          break;
+        case 'area':
+          searchMatches = ticket.area?.toLowerCase().includes(searchLower) || false;
+          break;
+        case 'sede':
+          searchMatches = ticket.sede?.toLowerCase().includes(searchLower) || false;
+          break;
+        case 'estado':
+          searchMatches = ticket.estado?.toLowerCase().includes(searchLower) || false;
+          break;
+        default:
+          searchMatches = (ticket.solicitud?.toLowerCase().includes(searchLower) || false) ||
+                         (ticket.solicitante?.toLowerCase().includes(searchLower) || false);
+      }
     }
     
-    return matches;
+    // Filtro por estado - manejar casos donde estado puede ser null/undefined
+    const estadoMatches = selectedEstado === 'todos' || 
+                         (ticket.estado || 'Cerrado') === selectedEstado;
+    
+    // Filtro por agente - manejar casos donde agente puede ser null/undefined
+    const agenteMatches = selectedAgente === 'todos' || 
+                         (ticket.agente || '') === selectedAgente;
+    
+    return searchMatches && estadoMatches && agenteMatches;
   });
 
   console.log(`🔍 Filtro activo: ${selectedFilter}, Término: "${searchTerm}"`);
+  console.log(`🔍 Estado seleccionado: "${selectedEstado}", Agente seleccionado: "${selectedAgente}"`);
   console.log(`📊 Total tickets: ${tickets.length}, Filtrados: ${filteredTickets.length}`);
   console.log(`🔍 DEBUG: Agentes state en render:`, agentes.length, agentes);
+  console.log(`🔍 DEBUG: Estados disponibles en tickets:`, [...new Set(tickets.map(t => t.estado))]);
+  console.log(`🔍 DEBUG: Agentes disponibles en tickets:`, [...new Set(tickets.map(t => t.agente).filter(Boolean))]);
 
-  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / itemsPerPage));
+  
+  // Resetear la página actual si está fuera del rango válido
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  if (currentPage > totalPages && totalPages > 0) {
+    setCurrentPage(1);
+  }
+  
+  const startIndex = (validCurrentPage - 1) * itemsPerPage;
   const paginatedTickets = filteredTickets.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (categoria: string) => {
@@ -311,6 +435,7 @@ export default function TicketsPage() {
           agente: '',
           area: '',
           sede: '',
+          estado: 'Cerrado',
           fechaCreacion: getLimaDateTime()
         });
         // Recargar tickets
@@ -347,6 +472,7 @@ export default function TicketsPage() {
     // Actualizar la fecha de creación al momento de abrir el modal (zona horaria de Lima)
     setNewTicket(prev => ({
       ...prev,
+      estado: 'Cerrado',
       fechaCreacion: getLimaDateTime()
     }));
     setShowNewTicketModal(true);
@@ -473,12 +599,20 @@ export default function TicketsPage() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedFilter('solicitud');
+    setSelectedEstado('todos');
+    setSelectedAgente('todos');
+    setCurrentPage(1);
+  };
+
   const handleExport = () => {
     // Crear CSV con los datos filtrados
     const csvContent = [
       ['Fecha', 'Solicitante', 'Solicitud', 'Categoría', 'Agente', 'Área', 'Sede'],
       ...filteredTickets.map(ticket => [
-        ticket.fecha_creacion ? new Date(ticket.fecha_creacion).toLocaleDateString() : '-',
+        formatDateFromDB(ticket.fecha_creacion),
         ticket.solicitante || '-',
         ticket.solicitud || '-',
         ticket.categoria || '-',
@@ -516,6 +650,36 @@ export default function TicketsPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#283447] mb-4">Tickets</h1>
+        
+        {/* Indicador de vista específica */}
+        {searchParams.get('type') === 'soporte' && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+              <span className="text-blue-700 font-medium">Vista: Tickets de Soporte</span>
+              <span className="text-blue-600 ml-2">(Todos los tickets de soporte técnico)</span>
+            </div>
+          </div>
+        )}
+        
+        {searchParams.get('estado') && (
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+              <span className="text-orange-700 font-medium">Vista: Tickets {searchParams.get('estado')}</span>
+            </div>
+          </div>
+        )}
+        
+        {searchParams.get('agente') && (
+          <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+              <span className="text-purple-700 font-medium">Vista: Tickets de {searchParams.get('agente')}</span>
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center space-x-6 text-sm text-gray-600">
           <span>Áreas cargadas: {areas.length}</span>
           <span className="text-gray-300">|</span>
@@ -544,6 +708,7 @@ export default function TicketsPage() {
                 <option value="agente">Agente</option>
                 <option value="area">Área</option>
                 <option value="sede">Sede</option>
+                <option value="estado">Estado</option>
               </select>
               <div className="relative">
                 <input
@@ -553,7 +718,8 @@ export default function TicketsPage() {
                     selectedFilter === 'categoria' ? 'categoría' :
                     selectedFilter === 'agente' ? 'agente' :
                     selectedFilter === 'area' ? 'área' :
-                    selectedFilter === 'sede' ? 'sede' : 'solicitud'}...`}
+                    selectedFilter === 'sede' ? 'sede' :
+                    selectedFilter === 'estado' ? 'estado' : 'solicitud'}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-transparent w-64"
@@ -565,17 +731,54 @@ export default function TicketsPage() {
                 Buscar
               </button>
             </div>
+            
+            {/* Filtros adicionales */}
+            <div className="flex gap-2">
+              <select 
+                value={selectedEstado}
+                onChange={(e) => setSelectedEstado(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              >
+                <option value="todos">Todos los estados</option>
+                <option value="Abierto">Abierto</option>
+                <option value="En Proceso">En Proceso</option>
+                <option value="Cerrado">Cerrado</option>
+              </select>
+              
+              <select 
+                value={selectedAgente}
+                onChange={(e) => setSelectedAgente(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              >
+                <option value="todos">Todos los agentes</option>
+                {agentes.map((agente) => (
+                  <option key={agente} value={agente}>
+                    {agente}
+                  </option>
+                ))}
+              </select>
+              
+              <button 
+                onClick={handleClearFilters}
+                className="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors duration-200"
+                title="Limpiar todos los filtros"
+              >
+                Limpiar
+              </button>
+            </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col items-end gap-2">
-            <button 
-              onClick={handleNewTicketClick}
-              className="bg-[#283447] text-white hover:bg-[#1e2a3a] px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors duration-200"
-            >
-              <Plus className="h-4 w-4" />
-              Nuevo Ticket
-            </button>
+            {permissions.canCreateTickets && (
+              <button 
+                onClick={handleNewTicketClick}
+                className="bg-[#283447] text-white hover:bg-[#1e2a3a] px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors duration-200"
+              >
+                <Plus className="h-4 w-4" />
+                Nuevo Ticket
+              </button>
+            )}
             <button 
               onClick={handleExport}
               className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors duration-200"
@@ -610,7 +813,7 @@ export default function TicketsPage() {
               Anterior
             </button>
             <span className="text-sm text-gray-900">
-              Página {currentPage} de {totalPages}
+              Página {validCurrentPage} de {totalPages}
             </span>
             <button 
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
@@ -653,6 +856,9 @@ export default function TicketsPage() {
                 <th className="w-20 py-4 px-3 text-left uppercase text-sm font-bold text-gray-700 tracking-wider">
                   SEDE
                 </th>
+                <th className="w-20 py-4 px-3 text-left uppercase text-sm font-bold text-gray-700 tracking-wider">
+                  ESTADO
+                </th>
                 <th className="w-16 py-4 px-3 text-center uppercase text-sm font-bold text-gray-700 tracking-wider">
                   ACCIONES
                 </th>
@@ -670,7 +876,7 @@ export default function TicketsPage() {
                     <input type="checkbox" className="rounded border-gray-300" />
                   </td>
                   <td className="w-20 px-2 py-4 text-sm text-gray-900">
-                    {ticket.fecha_creacion ? new Date(ticket.fecha_creacion).toLocaleDateString() : '-'}
+                    {formatDateFromDB(ticket.fecha_creacion)}
                   </td>
                   <td className="w-28 px-2 py-4 text-sm text-gray-900 font-bold truncate">
                     {ticket.solicitante || '-'}
@@ -715,6 +921,20 @@ export default function TicketsPage() {
                       {truncateText(ticket.sede, 15)}
                     </div>
                   </td>
+                  <td className="w-20 px-2 py-4 text-sm text-gray-900 font-medium">
+                    <span 
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        ticket.estado === 'Cerrado' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : ticket.estado === 'En Proceso'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                      title={ticket.estado || 'Cerrado'}
+                    >
+                      {ticket.estado || 'Cerrado'}
+                    </span>
+                  </td>
                   <td className="w-16 px-2 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button 
@@ -724,20 +944,24 @@ export default function TicketsPage() {
                       >
                         <Eye className="h-4 w-4 text-gray-700" />
                       </button>
-                      <button 
-                        onClick={() => handleEditTicket(ticket)}
-                        className="w-8 h-8 border-2 border-green-500 bg-white hover:bg-green-50 flex items-center justify-center rounded transition-all duration-200"
-                        title="Editar ticket"
-                      >
-                        <Edit className="h-4 w-4 text-gray-700" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteTicket(ticket)}
-                        className="w-8 h-8 border-2 border-red-500 bg-white hover:bg-red-50 flex items-center justify-center rounded transition-all duration-200"
-                        title="Eliminar ticket"
-                      >
-                        <Trash2 className="h-4 w-4 text-gray-700" />
-                      </button>
+                      {canEditTicket(ticket) && (
+                        <button 
+                          onClick={() => handleEditTicket(ticket)}
+                          className="w-8 h-8 border-2 border-green-500 bg-white hover:bg-green-50 flex items-center justify-center rounded transition-all duration-200"
+                          title="Editar ticket"
+                        >
+                          <Edit className="h-4 w-4 text-gray-700" />
+                        </button>
+                      )}
+                      {permissions.canDeleteTickets && (
+                        <button 
+                          onClick={() => handleDeleteTicket(ticket)}
+                          className="w-8 h-8 border-2 border-red-500 bg-white hover:bg-red-50 flex items-center justify-center rounded transition-all duration-200"
+                          title="Eliminar ticket"
+                        >
+                          <Trash2 className="h-4 w-4 text-gray-700" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -891,9 +1115,9 @@ export default function TicketsPage() {
                       onChange={(e) => handleInputChange('agente', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
                     >
-                      <option value="">Seleccionar agente ({agentes.length} disponibles)</option>
-                      {agentes.length > 0 ? (
-                        agentes.map((agente) => (
+                      <option value="">Seleccionar agente ({getAvailableAgents(agentes).length} disponibles)</option>
+                      {getAvailableAgents(agentes).length > 0 ? (
+                        getAvailableAgents(agentes).map((agente) => (
                           <option key={agente} value={agente}>
                             {agente}
                           </option>
@@ -901,6 +1125,21 @@ export default function TicketsPage() {
                       ) : (
                         <option value="" disabled>Cargando agentes...</option>
                       )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estado
+                    </label>
+                    <select
+                      value={newTicket.estado}
+                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                      required
+                    >
+                      <option value="Abierto">Abierto</option>
+                      <option value="En Proceso">En Proceso</option>
+                      <option value="Cerrado">Cerrado</option>
                     </select>
                   </div>
                 </div>
@@ -1076,9 +1315,9 @@ export default function TicketsPage() {
                       onChange={(e) => handleEditInputChange('agente', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
                     >
-                      <option value="">Seleccionar agente ({agentes.length} disponibles)</option>
-                      {agentes.length > 0 ? (
-                        agentes.map((agente) => (
+                      <option value="">Seleccionar agente ({getAvailableAgents(agentes).length} disponibles)</option>
+                      {getAvailableAgents(agentes).length > 0 ? (
+                        getAvailableAgents(agentes).map((agente) => (
                           <option key={agente} value={agente}>
                             {agente}
                           </option>
@@ -1086,6 +1325,21 @@ export default function TicketsPage() {
                       ) : (
                         <option value="" disabled>Cargando agentes...</option>
                       )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estado
+                    </label>
+                    <select
+                      value={editingTicket.estado || 'Cerrado'}
+                      onChange={(e) => handleEditInputChange('estado', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                      required
+                    >
+                      <option value="Abierto">Abierto</option>
+                      <option value="En Proceso">En Proceso</option>
+                      <option value="Cerrado">Cerrado</option>
                     </select>
                   </div>
                 </div>
@@ -1168,13 +1422,7 @@ export default function TicketsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Creación</label>
                     <p className="px-3 py-2 bg-gray-50 rounded-md text-sm">
-                      {viewingTicket.fecha_creacion ? new Date(viewingTicket.fecha_creacion).toLocaleDateString('es-PE', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : '-'}
+                      {formatDateTimeFromDB(viewingTicket.fecha_creacion)}
                     </p>
                   </div>
 
@@ -1196,6 +1444,13 @@ export default function TicketsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Agente Asignado</label>
                     <p className="px-3 py-2 bg-gray-50 rounded-md text-sm">
                       {viewingTicket.agente || 'Sin asignar'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <p className="px-3 py-2 bg-gray-50 rounded-md text-sm">
+                      {viewingTicket.estado || 'Cerrado'}
                     </p>
                   </div>
                 </div>
@@ -1257,6 +1512,9 @@ export default function TicketsPage() {
           </div>
         </div>
       )}
+      
+      {/* Botón temporal para forzar configuración de administrador */}
+      <ForceAdminButton />
     </div>
   );
 }

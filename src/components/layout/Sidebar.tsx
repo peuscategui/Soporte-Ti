@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   LayoutDashboard,
   Ticket,
@@ -14,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HeadphonesIcon,
+  Settings,
 } from 'lucide-react';
 
 const navItems = [
@@ -25,10 +27,15 @@ const navItems = [
   { href: '/knowledge', label: 'Base de Conocimientos', icon: BookOpen },
 ];
 
+const adminItems = [
+  { href: '/admin/permisos', label: 'Administrar Permisos', icon: Settings },
+];
+
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const { data: dashboardData, loading } = useDashboardData();
+  const { isAdmin, isSupervisor } = usePermissions();
 
   // Preparar estadísticas rápidas con datos reales
   const quickStats = [
@@ -91,6 +98,37 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        
+        {/* Admin Section */}
+        {(isAdmin || isSupervisor) && (
+          <>
+            <div className={`border-t border-white/20 my-4 ${isCollapsed ? 'mx-2' : 'mx-0'}`}></div>
+            <div className="px-3">
+              <div className={`text-xs font-semibold text-white/70 mb-3 uppercase tracking-wide ${isCollapsed ? 'hidden' : 'block'}`}>
+                Administración
+              </div>
+              <div className="space-y-1">
+                {adminItems.map(({ href, label, icon: Icon }) => {
+                  const isActive = pathname === href;
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`flex items-center p-3 rounded-lg transition-all duration-200 group ${
+                        isActive
+                          ? 'bg-yellow-600 text-white'
+                          : 'text-white hover:bg-white/10'
+                      } ${isCollapsed ? 'justify-center' : ''}`}
+                    >
+                      <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-white group-hover:text-white'}`} />
+                      <span className={`ml-3 text-sm font-medium ${isCollapsed ? 'hidden' : 'block'}`}>{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       {/* Quick Stats */}

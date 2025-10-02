@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
-import { query } from '../../../../lib/database.mjs';
+import { query } from '../../../lib/database.mjs';
+import { filterTicketsByUserPermissions, getUserFromRequest } from '../../../lib/permissionValidator.js';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    // Obtener usuario desde headers (en producción sería desde JWT)
+    const user = getUserFromRequest(request.headers);
+    
     const queryText = `
       SELECT 
         ROW_NUMBER() OVER (ORDER BY "Fecha de Registro" DESC) as id,
@@ -12,7 +16,8 @@ export async function GET() {
         COALESCE(categoria, '') as categoria,
         COALESCE(agente, '') as agente,
         COALESCE(area, '') as area,
-        COALESCE(sede, '') as sede
+        COALESCE(sede, '') as sede,
+        COALESCE(estado, 'Cerrado') as estado
       FROM public.tksoporte 
       WHERE "Fecha de Registro" IS NOT NULL
       ORDER BY "Fecha de Registro" DESC;
@@ -20,9 +25,17 @@ export async function GET() {
     
     const result = await query(queryText);
     
+    // Filtrar tickets según permisos del usuario
+    let filteredTickets = result.rows;
+    if (user) {
+      filteredTickets = filterTicketsByUserPermissions(result.rows, user);
+    }
+    
     return NextResponse.json({
       success: true,
-      data: result.rows
+      data: filteredTickets,
+      total: filteredTickets.length,
+      user: user ? { name: user.fullName, role: user.systemRole } : null
     });
   } catch (error) {
     console.error('Error en API tickets:', error);
