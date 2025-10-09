@@ -120,10 +120,6 @@ export default function DashboardPage() {
         // Tickets abiertos
         router.push(`${baseUrl}?estado=Abierto&period=${periodFilter}`);
         break;
-      case 'proceso':
-        // Tickets en proceso
-        router.push(`${baseUrl}?estado=En Proceso&period=${periodFilter}`);
-        break;
       default:
         router.push(baseUrl);
     }
@@ -162,14 +158,6 @@ export default function DashboardPage() {
             change: 'Requieren atención',
             changeType: 'negative',
             icon: XCircle,
-          },
-          {
-            id: 'proceso',
-            title: 'Tickets en Proceso',
-            value: dashboardData?.stats?.tickets_en_proceso?.toString() || '0',
-            change: 'En desarrollo',
-            changeType: 'warning',
-            icon: Clock,
           },
         ];
 
@@ -522,7 +510,7 @@ export default function DashboardPage() {
       </div>
       
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat: any, index: number) => {
           const Icon = stat.icon;
           return (

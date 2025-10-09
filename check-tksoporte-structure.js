@@ -12,37 +12,6 @@ async function checkTableStructure() {
   try {
     console.log('🔍 Verificando estructura de la tabla tksoporte...\n');
     
-    const result = await pool.query(`
-      SELECT column_name, data_type, is_nullable, column_default
-      FROM information_schema.columns 
-      WHERE table_name = 'tksoporte' 
-      AND table_schema = 'public'
-      ORDER BY ordinal_position;
-    `);
-    
-    console.log('📋 Estructura actual de la tabla tksoporte:');
-    console.log('==========================================');
-    result.rows.forEach(row => {
-      console.log(`${row.column_name.padEnd(25)} | ${row.data_type.padEnd(15)} | ${row.is_nullable}`);
-    });
-    
-    console.log(`\n📊 Total de columnas: ${result.rows.length}`);
-    
-    // Verificar si ya existe una columna 'sede'
-    const sedeExists = result.rows.find(row => row.column_name.toLowerCase() === 'sede');
-    if (sedeExists) {
-      console.log('\n✅ La columna "sede" ya existe');
-    } else {
-      console.log('\n❌ La columna "sede" NO existe - necesitamos crearla');
-    }
-    
-    await pool.end();
-  } catch (error) {
-    console.error('❌ Error:', error.message);
-  }
-}
-
-checkTableStructure();
     // Verificar si la tabla existe
     const tableExistsQuery = `
       SELECT EXISTS (
@@ -111,3 +80,8 @@ checkTableStructure();
 }
 
 checkTableStructure();
+
+
+
+
+

@@ -289,6 +289,55 @@ async function getTopUsuarios(days = 7) {
   }
 }
 
+// Función para normalizar nombres de sede
+function normalizeSede(sede) {
+  if (!sede) return sede;
+  
+  // Convertir a string y limpiar espacios
+  let normalized = String(sede).trim();
+  
+  // Normalizar variaciones específicas conocidas
+  const sedeMappings = {
+    'chorrillos': 'Chorrillos',
+    'chorillos': 'Chorrillos',  // Variación con una sola 'r'
+    'CHORRILLOS': 'Chorrillos',
+    'CHORILLOS': 'Chorrillos',  // Variación con una sola 'r' en mayúsculas
+    'Chorrillos ': 'Chorrillos',
+    'Chorillos ': 'Chorrillos', // Variación con una sola 'r' y espacio
+    ' chorrillos': 'Chorrillos',
+    ' chorillos': 'Chorrillos',  // Variación con una sola 'r' y espacio al inicio
+    'surquillo': 'Surquillo',
+    'SURQUILLO': 'Surquillo',
+    'Surquillo ': 'Surquillo',
+    ' surquillo': 'Surquillo',
+    'arequipa': 'Arequipa',
+    'AREQUIPA': 'Arequipa',
+    'Arequipa ': 'Arequipa',
+    ' arequipa': 'Arequipa'
+  };
+  
+  // Aplicar mapeo directo si existe
+  const lowerSede = normalized.toLowerCase();
+  if (sedeMappings[lowerSede]) {
+    normalized = sedeMappings[lowerSede];
+  } else {
+    // Manejar variaciones ortográficas usando regex más flexible
+    if (/^ch[oó]r?r?illos?$/i.test(lowerSede)) {
+      normalized = 'Chorrillos';
+    } else if (/^surquillos?$/i.test(lowerSede)) {
+      normalized = 'Surquillo';
+    } else if (/^arequipas?$/i.test(lowerSede)) {
+      normalized = 'Arequipa';
+    } else {
+      // Capitalizar primera letra si no coincide con ningún patrón
+      normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+    }
+  }
+  
+  console.log(`Normalizando sede: "${sede}" -> "${normalized}"`);
+  return normalized;
+}
+
 // Función para obtener atenciones por sede
 async function getSedeAttendances(days = 7) {
   try {
@@ -308,8 +357,26 @@ async function getSedeAttendances(days = 7) {
     `;
     
     const result = await pool.query(query);
-    console.log('Datos de sede obtenidos:', result.rows);
-    return result.rows;
+    console.log('Datos de sede obtenidos (antes de normalizar):', result.rows);
+    
+    // Normalizar y agrupar los datos
+    const normalizedData = {};
+    result.rows.forEach(row => {
+      const normalizedSede = normalizeSede(row.sede);
+      if (normalizedData[normalizedSede]) {
+        normalizedData[normalizedSede] += parseInt(row.atenciones);
+      } else {
+        normalizedData[normalizedSede] = parseInt(row.atenciones);
+      }
+    });
+    
+    // Convertir a array y ordenar
+    const finalData = Object.entries(normalizedData)
+      .map(([sede, atenciones]) => ({ sede, atenciones }))
+      .sort((a, b) => b.atenciones - a.atenciones);
+    
+    console.log('Datos de sede normalizados:', finalData);
+    return finalData;
   } catch (error) {
     console.error('Error obteniendo atenciones por sede:', error);
     return [];
