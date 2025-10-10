@@ -1,5 +1,5 @@
-# Usar la imagen oficial de Node.js
-FROM node:18-alpine
+# Etapa 1: Build
+FROM node:18-alpine AS builder
 
 # Establecer el directorio de trabajo
 WORKDIR /app
@@ -7,27 +7,47 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias (incluyendo devDependencies para el build)
-RUN npm install
+# Instalar dependencias con legacy peer deps para evitar conflictos
+RUN npm ci --legacy-peer-deps
 
 # Copiar el código fuente
 COPY . .
 
-# Variables de entorno para configuración del servidor
-ARG NEXT_PUBLIC_SERVER_IP
-ARG NEXT_PUBLIC_SERVER_PORT
-ARG NEXT_PUBLIC_API_URL
-
-# Establecer variables de entorno
-ENV NEXT_PUBLIC_SERVER_IP=${NEXT_PUBLIC_SERVER_IP:-localhost}
-ENV NEXT_PUBLIC_SERVER_PORT=${NEXT_PUBLIC_SERVER_PORT:-3001}
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+# Variables de entorno para el build
+ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV production
 
 # Construir la aplicación
 RUN npm run build
 
+# Etapa 2: Production
+FROM node:18-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Crear usuario no-root
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copiar archivos necesarios desde el builder
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/package*.json ./
+
+# Cambiar permisos
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
 # Exponer el puerto
 EXPOSE 3001
 
+ENV PORT 3001
+ENV HOSTNAME "0.0.0.0"
+
 # Comando para iniciar la aplicación
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

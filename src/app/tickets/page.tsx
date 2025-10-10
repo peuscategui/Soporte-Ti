@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Plus, Download, Eye, Edit, Trash2, Filter } from 'lucide-react';
 import { CATEGORIAS_ESTANDAR, getCategoriasSugeridas } from '../../constants/categorias';
@@ -9,7 +9,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../hooks/useAuth';
 import ForceAdminButton from '../../components/ForceAdminButton';
 
-export default function TicketsPage() {
+function TicketsPageContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { permissions, canEditTicket, canViewTicket, filterTicketsByPermissions, getAvailableAgents } = usePermissions();
@@ -1516,5 +1516,20 @@ export default function TicketsPage() {
       {/* Botón temporal para forzar configuración de administrador */}
       <ForceAdminButton />
     </div>
+  );
+}
+
+export default function TicketsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 p-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando tickets...</p>
+        </div>
+      </div>
+    }>
+      <TicketsPageContent />
+    </Suspense>
   );
 }

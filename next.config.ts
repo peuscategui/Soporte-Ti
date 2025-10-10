@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   eslint: {
     // Deshabilitar ESLint durante el build para evitar errores de despliegue
     ignoreDuringBuilds: true,
@@ -8,11 +9,6 @@ const nextConfig: NextConfig = {
   typescript: {
     // Deshabilitar verificación de TypeScript durante el build si es necesario
     ignoreBuildErrors: false,
-  },
-  experimental: {
-    turbo: {
-      root: process.cwd(),
-    },
   },
   // Variables de entorno públicas
   env: {
