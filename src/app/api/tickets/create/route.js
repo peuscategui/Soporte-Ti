@@ -61,20 +61,15 @@ export async function POST(request) {
     console.log('🔍 Insertando ticket con agente:', agente || null);
     console.log('🔍 Fecha recibida:', fechaCreacion);
     
-    // Convertir la fecha de datetime-local a fecha de Lima
+    // Convertir la fecha de datetime-local a timestamp UTC
     let fechaParaBD;
     if (fechaCreacion) {
-      // El datetime-local viene en formato "YYYY-MM-DDTHH:MM" (hora local)
-      // Necesitamos convertirlo a fecha de Lima (UTC-5)
-      const fechaLocal = new Date(fechaCreacion);
-      // Ajustar por la diferencia de zona horaria de Lima (UTC-5)
-      const fechaLima = new Date(fechaLocal.getTime() + (5 * 60 * 60 * 1000));
-      fechaParaBD = fechaLima.toISOString();
+      // El datetime-local viene en formato "YYYY-MM-DDTHH:MM" (hora local del navegador)
+      // Lo convertimos a ISO string para almacenar en UTC
+      fechaParaBD = new Date(fechaCreacion).toISOString();
     } else {
-      // Si no hay fecha, usar la fecha actual de Lima
-      const ahora = new Date();
-      const fechaLima = new Date(ahora.getTime() + (5 * 60 * 60 * 1000));
-      fechaParaBD = fechaLima.toISOString();
+      // Si no hay fecha, usar la fecha actual
+      fechaParaBD = new Date().toISOString();
     }
     
     console.log('🔍 Fecha ajustada para BD:', fechaParaBD);

@@ -255,9 +255,10 @@ export default function DashboardPage() {
     }
 
     const labels = dashboardData.ticketsTrend.map((item: any) => 
-      new Date(item.fecha).toLocaleDateString('es-ES', { 
+      new Date(item.fecha).toLocaleDateString('es-PE', { 
         month: 'short', 
-        day: 'numeric' 
+        day: 'numeric',
+        timeZone: 'America/Lima'
       })
     );
     

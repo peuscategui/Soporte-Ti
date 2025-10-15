@@ -35,7 +35,7 @@ async function getTicketStats(days = 7) {
           'Sistema Horizon', 'Renovación y Cambios de Equipo'
         ) OR area = 'Tecnología de la Información' THEN 1 END) as tickets_infraestructura
       FROM public.tksoporte
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days';
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp;
     `;
     
     const result = await pool.query(query);
@@ -110,7 +110,7 @@ async function getTicketsByAgent(days = 7) {
         agente,
         COUNT(*) as count
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND agente IS NOT NULL AND agente != ''
       GROUP BY agente 
       ORDER BY count DESC;
@@ -138,7 +138,7 @@ async function getTicketsByArea(days = 7) {
         area,
         COUNT(*) as count
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND area IS NOT NULL AND area != ''
       GROUP BY area 
       ORDER BY count DESC;
@@ -157,13 +157,13 @@ async function getTicketsTrend(days = 7) {
   try {
     const query = `
       SELECT 
-        DATE("Fecha de Registro") as fecha,
+        DATE(("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima') as fecha,
         COUNT(*) as total_tickets,
         COUNT(CASE WHEN categoria = 'Resuelto' OR categoria = 'Cerrado' THEN 1 END) as tickets_resueltos
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND "Fecha de Registro" IS NOT NULL
-      GROUP BY DATE("Fecha de Registro")
+      GROUP BY DATE(("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima')
       ORDER BY fecha ASC;
     `;
     
@@ -183,7 +183,7 @@ async function getAgentAttendances(days = 7) {
         agente,
         COUNT(*) as atenciones
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND "Fecha de Registro" IS NOT NULL
         AND agente IS NOT NULL 
         AND agente != ''
@@ -216,7 +216,7 @@ async function getTopAreas(days = 7) {
         area,
         COUNT(*) as cantidad
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND "Fecha de Registro" IS NOT NULL
         AND area IS NOT NULL 
         AND area != ''
@@ -243,7 +243,7 @@ async function getTopCategorias(days = 7) {
         categoria,
         COUNT(*) as cantidad
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND "Fecha de Registro" IS NOT NULL
         AND categoria IS NOT NULL 
         AND categoria != ''
@@ -270,7 +270,7 @@ async function getTopUsuarios(days = 7) {
         solicitante,
         COUNT(*) as total
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND "Fecha de Registro" IS NOT NULL
         AND solicitante IS NOT NULL 
         AND solicitante != ''
@@ -346,7 +346,7 @@ async function getSedeAttendances(days = 7) {
         sede,
         COUNT(*) as atenciones
       FROM public.tksoporte 
-      WHERE "Fecha de Registro" >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp
         AND "Fecha de Registro" IS NOT NULL
         AND sede IS NOT NULL 
         AND sede != ''
@@ -394,7 +394,7 @@ async function getInfraestructuraStats(days = 7) {
         COUNT(CASE WHEN estado = 'Atendido' THEN 1 END) as infraestructura_atendidos,
         COUNT(CASE WHEN estado = 'Escalado' THEN 1 END) as infraestructura_escalados
       FROM public.infraestructura
-      ${days > 0 ? `WHERE fecha_creacion >= CURRENT_DATE - INTERVAL '${days} days'` : ''};
+      ${days > 0 ? `WHERE (fecha_creacion AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp` : ''};
     `;
     
     const result = await pool.query(query);

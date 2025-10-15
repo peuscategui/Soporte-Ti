@@ -70,18 +70,14 @@ export async function PUT(request) {
       RETURNING *
     `;
     
-    // Ajustar la fecha de creación si viene en datetime-local
+    // Ajustar la fecha de creación para comparación
     let fechaCreacionAjustada = originalData?.fecha_creacion;
     if (fechaCreacionAjustada && !fechaCreacionAjustada.includes('Z') && !fechaCreacionAjustada.includes('+')) {
-      // Si es datetime-local, ajustar por zona horaria de Lima
-      const fechaLocal = new Date(fechaCreacionAjustada);
-      const fechaLima = new Date(fechaLocal.getTime() + (5 * 60 * 60 * 1000));
-      fechaCreacionAjustada = fechaLima.toISOString();
+      // Si es datetime-local, convertir a ISO string
+      fechaCreacionAjustada = new Date(fechaCreacionAjustada).toISOString();
     } else if (!fechaCreacionAjustada) {
-      // Si no hay fecha, usar la fecha actual de Lima
-      const ahora = new Date();
-      const fechaLima = new Date(ahora.getTime() + (5 * 60 * 60 * 1000));
-      fechaCreacionAjustada = fechaLima.toISOString();
+      // Si no hay fecha, usar la fecha actual
+      fechaCreacionAjustada = new Date().toISOString();
     }
     
     const values = [
