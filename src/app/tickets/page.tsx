@@ -22,6 +22,8 @@ function TicketsPageContent() {
   const [selectedSede, setSelectedSede] = useState('todas');
   const [selectedEstado, setSelectedEstado] = useState('todos');
   const [selectedAgente, setSelectedAgente] = useState('todos');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
@@ -173,7 +175,10 @@ function TicketsPageContent() {
     area: '',
     sede: '',
     estado: 'Cerrado',
-    fechaCreacion: getLimaDateTime()
+    fechaCreacion: getLimaDateTime(),
+    tipoAtencion: '',
+    fechaCierre: '',
+    solucion: ''
   });
 
   useEffect(() => {
@@ -240,7 +245,7 @@ function TicketsPageContent() {
   // Resetear página cuando cambien los filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedFilter, selectedEstado, selectedAgente]);
+  }, [searchTerm, selectedFilter, selectedEstado, selectedAgente, fechaInicio, fechaFin]);
 
   const fetchAreas = async () => {
     try {
@@ -387,11 +392,36 @@ function TicketsPageContent() {
     const agenteMatches = selectedAgente === 'todos' || 
                          (ticket.agente || '') === selectedAgente;
     
-    return searchMatches && estadoMatches && agenteMatches;
+    // Filtro por fecha - verificar si está dentro del rango especificado
+    let fechaMatches = true;
+    if (fechaInicio || fechaFin) {
+      const ticketFecha = ticket.fecha_creacion ? new Date(ticket.fecha_creacion) : null;
+      
+      if (ticketFecha) {
+        if (fechaInicio) {
+          const inicio = new Date(fechaInicio + 'T00:00:00');
+          if (ticketFecha < inicio) {
+            fechaMatches = false;
+          }
+        }
+        
+        if (fechaFin && fechaMatches) {
+          const fin = new Date(fechaFin + 'T23:59:59');
+          if (ticketFecha > fin) {
+            fechaMatches = false;
+          }
+        }
+      } else {
+        fechaMatches = false;
+      }
+    }
+    
+    return searchMatches && estadoMatches && agenteMatches && fechaMatches;
   });
 
   console.log(`🔍 Filtro activo: ${selectedFilter}, Término: "${searchTerm}"`);
   console.log(`🔍 Estado seleccionado: "${selectedEstado}", Agente seleccionado: "${selectedAgente}"`);
+  console.log(`📅 Fecha inicio: "${fechaInicio}", Fecha fin: "${fechaFin}"`);
   console.log(`📊 Total tickets: ${tickets.length}, Filtrados: ${filteredTickets.length}`);
   console.log(`🔍 DEBUG: Agentes state en render:`, agentes.length, agentes);
   console.log(`🔍 DEBUG: Estados disponibles en tickets:`, [...new Set(tickets.map(t => t.estado))]);
@@ -436,7 +466,10 @@ function TicketsPageContent() {
           area: '',
           sede: '',
           estado: 'Cerrado',
-          fechaCreacion: getLimaDateTime()
+          fechaCreacion: getLimaDateTime(),
+          tipoAtencion: '',
+          fechaCierre: '',
+          solucion: ''
         });
         // Recargar tickets
         fetchTickets();
@@ -473,7 +506,10 @@ function TicketsPageContent() {
     setNewTicket(prev => ({
       ...prev,
       estado: 'Cerrado',
-      fechaCreacion: getLimaDateTime()
+      fechaCreacion: getLimaDateTime(),
+      tipoAtencion: '',
+      fechaCierre: '',
+      solucion: ''
     }));
     setShowNewTicketModal(true);
   };
@@ -604,6 +640,8 @@ function TicketsPageContent() {
     setSelectedFilter('solicitud');
     setSelectedEstado('todos');
     setSelectedAgente('todos');
+    setFechaInicio('');
+    setFechaFin('');
     setCurrentPage(1);
   };
 
@@ -758,6 +796,24 @@ function TicketsPageContent() {
                 ))}
               </select>
               
+              <input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                placeholder="Desde"
+                title="Fecha de inicio"
+              />
+              
+              <input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                placeholder="Hasta"
+                title="Fecha de fin"
+              />
+              
               <button 
                 onClick={handleClearFilters}
                 className="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors duration-200"
@@ -859,6 +915,12 @@ function TicketsPageContent() {
                 <th className="w-20 py-4 px-3 text-left uppercase text-sm font-bold text-gray-700 tracking-wider">
                   ESTADO
                 </th>
+                <th className="w-24 py-4 px-3 text-left uppercase text-sm font-bold text-gray-700 tracking-wider">
+                  TIPO ATENCIÓN
+                </th>
+                <th className="w-20 py-4 px-3 text-left uppercase text-sm font-bold text-gray-700 tracking-wider">
+                  FECHA CIERRE
+                </th>
                 <th className="w-16 py-4 px-3 text-center uppercase text-sm font-bold text-gray-700 tracking-wider">
                   ACCIONES
                 </th>
@@ -934,6 +996,25 @@ function TicketsPageContent() {
                     >
                       {ticket.estado || 'Cerrado'}
                     </span>
+                  </td>
+                  <td className="w-24 px-2 py-4 text-sm text-gray-900 font-medium">
+                    <span 
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        ticket.tipo_atencion === 'Incidencia' 
+                          ? 'bg-red-100 text-red-800' 
+                          : ticket.tipo_atencion === 'Problema'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : ticket.tipo_atencion === 'Requerimiento'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                      title={ticket.tipo_atencion || 'No especificado'}
+                    >
+                      {ticket.tipo_atencion || '-'}
+                    </span>
+                  </td>
+                  <td className="w-20 px-2 py-4 text-sm text-gray-900">
+                    {ticket.fecha_cierre ? formatDateFromDB(ticket.fecha_cierre) : '-'}
                   </td>
                   <td className="w-16 px-2 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
@@ -1142,6 +1223,21 @@ function TicketsPageContent() {
                       <option value="Cerrado">Cerrado</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tipo de Atención
+                    </label>
+                    <select
+                      value={newTicket.tipoAtencion}
+                      onChange={(e) => handleInputChange('tipoAtencion', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                    >
+                      <option value="">Seleccionar tipo</option>
+                      <option value="Incidencia">Incidencia</option>
+                      <option value="Problema">Problema</option>
+                      <option value="Requerimiento">Requerimiento</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Columna 3 */}
@@ -1160,6 +1256,17 @@ function TicketsPageContent() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fecha de Cierre
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newTicket.fechaCierre}
+                      onChange={(e) => handleInputChange('fechaCierre', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Descripción de la Solicitud
                     </label>
                     <textarea
@@ -1169,6 +1276,18 @@ function TicketsPageContent() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
                       placeholder="Describe el problema o solicitud..."
                       required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Solución
+                    </label>
+                    <textarea
+                      value={newTicket.solucion}
+                      onChange={(e) => handleInputChange('solucion', e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                      placeholder="Describe la solución aplicada (opcional)..."
                     />
                   </div>
                 </div>
@@ -1342,6 +1461,21 @@ function TicketsPageContent() {
                       <option value="Cerrado">Cerrado</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tipo de Atención
+                    </label>
+                    <select
+                      value={editingTicket.tipo_atencion || editingTicket.tipoAtencion || ''}
+                      onChange={(e) => handleEditInputChange('tipoAtencion', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                    >
+                      <option value="">Seleccionar tipo</option>
+                      <option value="Incidencia">Incidencia</option>
+                      <option value="Problema">Problema</option>
+                      <option value="Requerimiento">Requerimiento</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Columna 3 */}
@@ -1359,6 +1493,17 @@ function TicketsPageContent() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fecha de Cierre
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editingTicket.fecha_cierre ? new Date(editingTicket.fecha_cierre).toISOString().slice(0, 16) : editingTicket.fechaCierre || ''}
+                      onChange={(e) => handleEditInputChange('fechaCierre', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Descripción de la Solicitud
                     </label>
                     <textarea
@@ -1368,6 +1513,18 @@ function TicketsPageContent() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
                       placeholder="Describe el problema o solicitud..."
                       required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Solución
+                    </label>
+                    <textarea
+                      value={editingTicket.solucion || ''}
+                      onChange={(e) => handleEditInputChange('solucion', e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-pastel/30"
+                      placeholder="Describe la solución aplicada (opcional)..."
                     />
                   </div>
                 </div>
@@ -1453,6 +1610,13 @@ function TicketsPageContent() {
                       {viewingTicket.estado || 'Cerrado'}
                     </p>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Atención</label>
+                    <p className="px-3 py-2 bg-gray-50 rounded-md text-sm">
+                      {viewingTicket.tipo_atencion || viewingTicket.tipoAtencion || 'No especificado'}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Información Adicional */}
@@ -1477,6 +1641,13 @@ function TicketsPageContent() {
                       #{viewingTicket.id || 'N/A'}
                     </p>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Cierre</label>
+                    <p className="px-3 py-2 bg-gray-50 rounded-md text-sm">
+                      {viewingTicket.fecha_cierre ? formatDateTimeFromDB(viewingTicket.fecha_cierre) : 'No cerrado'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -1489,6 +1660,18 @@ function TicketsPageContent() {
                   </p>
                 </div>
               </div>
+
+              {/* Solución */}
+              {viewingTicket.solucion && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Solución Aplicada</label>
+                  <div className="px-4 py-3 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+                      {viewingTicket.solucion}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Botones de Acción */}
               <div className="mt-6 flex justify-end space-x-3">

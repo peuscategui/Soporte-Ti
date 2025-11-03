@@ -18,7 +18,10 @@ export async function POST(request) {
       agente,
       sede,
       estado,
-      fechaCreacion
+      fechaCreacion,
+      tipoAtencion,
+      fechaCierre,
+      solucion
     } = body;
     
     // Validar permisos para crear tickets
@@ -74,6 +77,12 @@ export async function POST(request) {
     
     console.log('🔍 Fecha ajustada para BD:', fechaParaBD);
     
+    // Convertir fecha de cierre si existe
+    let fechaCierreParaBD = null;
+    if (fechaCierre) {
+      fechaCierreParaBD = new Date(fechaCierre).toISOString();
+    }
+    
     const result = await query(`
       INSERT INTO tksoporte (
         solicitud, 
@@ -83,8 +92,11 @@ export async function POST(request) {
         agente, 
         sede, 
         estado,
-        "Fecha de Registro"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        "Fecha de Registro",
+        tipo_atencion,
+        fecha_cierre,
+        solucion
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [
       solicitud,
@@ -94,7 +106,10 @@ export async function POST(request) {
       agente || null,
       sede || 'Surquillo',
       estado || 'Cerrado',
-      fechaParaBD
+      fechaParaBD,
+      tipoAtencion || null,
+      fechaCierreParaBD,
+      solucion || null
     ]);
     
     console.log('✅ Ticket creado exitosamente:', result.rows[0]);

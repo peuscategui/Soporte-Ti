@@ -33,7 +33,11 @@ async function getTicketStats(days = 7) {
         -- Tickets de Infraestructura (categorías relacionadas con infraestructura)
         COUNT(CASE WHEN categoria IN (
           'Sistema Horizon', 'Renovación y Cambios de Equipo'
-        ) OR area = 'Tecnología de la Información' THEN 1 END) as tickets_infraestructura
+        ) OR area = 'Tecnología de la Información' THEN 1 END) as tickets_infraestructura,
+        -- Tickets por tipo de atención
+        COUNT(CASE WHEN tipo_atencion = 'Incidencia' THEN 1 END) as tickets_incidencia,
+        COUNT(CASE WHEN tipo_atencion = 'Requerimiento' THEN 1 END) as tickets_requerimiento,
+        COUNT(CASE WHEN tipo_atencion = 'Problema' THEN 1 END) as tickets_problema
       FROM public.tksoporte
       WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp;
     `;
@@ -49,7 +53,10 @@ async function getTicketStats(days = 7) {
       tickets_cerrados: 0,
       tickets_asignados: 0,
       tickets_soporte: 0,
-      tickets_infraestructura: 0
+      tickets_infraestructura: 0,
+      tickets_incidencia: 0,
+      tickets_requerimiento: 0,
+      tickets_problema: 0
     };
   }
 }

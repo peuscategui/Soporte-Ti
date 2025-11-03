@@ -8,7 +8,7 @@ export async function PUT(request) {
     const user = getUserFromRequest(request.headers);
     
     const body = await request.json();
-    const { id, solicitante, solicitud, categoria, agente, area, sede, estado, originalData } = body;
+    const { id, solicitante, solicitud, categoria, agente, area, sede, estado, tipoAtencion, fechaCierre, solucion, originalData } = body;
 
     // Validar campos requeridos
     if (!id || !solicitante || !solicitud || !categoria || !area || !sede) {
@@ -48,6 +48,12 @@ export async function PUT(request) {
       }
     }
 
+    // Convertir fecha de cierre si existe
+    let fechaCierreParaBD = null;
+    if (fechaCierre) {
+      fechaCierreParaBD = new Date(fechaCierre).toISOString();
+    }
+    
     // Usar los datos originales para identificar el registro de manera única
     // Esto es más estable que usar ROW_NUMBER()
     const queryText = `
@@ -59,14 +65,17 @@ export async function PUT(request) {
         agente = $4,
         area = $5,
         sede = $6,
-        estado = $7
-      WHERE solicitante = $8 
-      AND solicitud = $9 
-      AND categoria = $10 
-      AND agente = $11 
-      AND area = $12 
-      AND sede = $13
-      AND "Fecha de Registro" = $14
+        estado = $7,
+        tipo_atencion = $8,
+        fecha_cierre = $9,
+        solucion = $10
+      WHERE solicitante = $11 
+      AND solicitud = $12 
+      AND categoria = $13 
+      AND agente = $14 
+      AND area = $15 
+      AND sede = $16
+      AND "Fecha de Registro" = $17
       RETURNING *
     `;
     
@@ -88,6 +97,9 @@ export async function PUT(request) {
       area, 
       sede,
       estado || 'Cerrado',
+      tipoAtencion || null,
+      fechaCierreParaBD,
+      solucion || null,
       originalData?.solicitante || '',
       originalData?.solicitud || '',
       originalData?.categoria || '',

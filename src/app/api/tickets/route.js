@@ -17,7 +17,10 @@ export async function GET(request) {
         COALESCE(agente, '') as agente,
         COALESCE(area, '') as area,
         COALESCE(sede, '') as sede,
-        COALESCE(estado, 'Cerrado') as estado
+        COALESCE(estado, 'Cerrado') as estado,
+        COALESCE(tipo_atencion, '') as tipo_atencion,
+        fecha_cierre,
+        COALESCE(solucion, '') as solucion
       FROM public.tksoporte 
       WHERE "Fecha de Registro" IS NOT NULL
       ORDER BY "Fecha de Registro" DESC;

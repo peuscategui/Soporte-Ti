@@ -16,7 +16,10 @@ import {
   Activity,
   Clock,
   Filter,
-  ChevronDown
+  ChevronDown,
+  AlertTriangle,
+  FileText,
+  Wrench
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -142,6 +145,12 @@ export default function DashboardPage() {
             change: `Últimos ${periodFilter} días`,
             changeType: 'positive',
             icon: Ticket,
+            isSpecial: true, // Marca especial para renderizado personalizado
+            details: {
+              incidencia: dashboardData?.stats?.tickets_incidencia || 0,
+              requerimiento: dashboardData?.stats?.tickets_requerimiento || 0,
+              problema: dashboardData?.stats?.tickets_problema || 0
+            }
           },
           {
             id: 'infraestructura',
@@ -514,6 +523,68 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat: any, index: number) => {
           const Icon = stat.icon;
+          
+          // Render especial para la tarjeta de tipos de atención
+          if (stat.isSpecial) {
+            return (
+              <div 
+                key={index} 
+                onClick={() => handleCardClick(stat.id)}
+                className="bg-white rounded-xl shadow-lg border border-gray-100 border-t-4 border-t-primary p-6 hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-md">
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    stat.changeType === 'positive' 
+                      ? 'bg-green-100 text-green-700' 
+                      : stat.changeType === 'neutral'
+                      ? 'bg-gray-100 text-gray-700'
+                      : stat.changeType === 'negative'
+                      ? 'bg-red-100 text-red-700'
+                      : stat.changeType === 'warning'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                  <p className="font-bold text-gray-900 mb-2 text-3xl">
+                    {stat.value}
+                  </p>
+                </div>
+                {/* Desglose por tipos */}
+                <div className="space-y-2 pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span className="text-xs text-gray-600">Incidencia</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{stat.details.incidencia}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <span className="text-xs text-gray-600">Requerimiento</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{stat.details.requerimiento}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Wrench className="h-4 w-4 text-orange-500" />
+                      <span className="text-xs text-gray-600">Problema</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{stat.details.problema}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          
+          // Render estándar para las demás tarjetas
           return (
             <div 
               key={index} 
