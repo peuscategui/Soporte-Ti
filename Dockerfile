@@ -37,6 +37,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/package*.json ./
+# Asegurar que los archivos .mjs se copien al standalone
+COPY --from=builder /app/src/lib/*.mjs ./src/lib/ 2>/dev/null || true
 
 # Cambiar permisos
 RUN chown -R nextjs:nodejs /app

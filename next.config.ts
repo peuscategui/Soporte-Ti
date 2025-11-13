@@ -10,11 +10,6 @@ const nextConfig: NextConfig = {
     // Deshabilitar verificación de TypeScript durante el build si es necesario
     ignoreBuildErrors: false,
   },
-  // Asegurar que los archivos .mjs se incluyan en el build standalone
-  outputFileTracingIncludes: {
-    '/api/tasks/**': ['./src/lib/database.mjs', './src/lib/validators.mjs'],
-    '/api/tasks/tickets/**': ['./src/lib/database.mjs'],
-  },
   // Variables de entorno públicas
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
