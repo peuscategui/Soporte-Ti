@@ -144,13 +144,12 @@ function toDateInput(value?: string | null) {
   return date.toISOString().split('T')[0];
 }
 
-function buildAuthHeaders(user: any) {
-  if (!user) return {};
-  return {
-    'x-user-name': user.fullName || '',
-    'x-user-email': user.email || '',
-    'x-user-role': user.systemRole || '',
-  };
+function buildAuthHeaders(user: any): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (user?.fullName) headers['x-user-name'] = user.fullName;
+  if (user?.email) headers['x-user-email'] = user.email;
+  if (user?.systemRole) headers['x-user-role'] = user.systemRole;
+  return headers;
 }
 
 function ProgressBar({ value }: { value: number }) {
@@ -699,10 +698,9 @@ export default function TasksPage() {
   async function fetchTasks() {
     try {
       setLoading(true);
+      const authHeaders = buildAuthHeaders(user);
       const response = await fetch('/api/tasks', {
-        headers: {
-          ...buildAuthHeaders(user),
-        },
+        headers: Object.keys(authHeaders).length > 0 ? authHeaders : undefined,
       });
 
       if (!response.ok) {
@@ -766,10 +764,9 @@ export default function TasksPage() {
       }
       params.set('limit', '50');
 
+      const authHeaders = buildAuthHeaders(user);
       const response = await fetch(`/api/tasks/tickets?${params.toString()}`, {
-        headers: {
-          ...buildAuthHeaders(user),
-        },
+        headers: Object.keys(authHeaders).length > 0 ? authHeaders : undefined,
       });
 
       if (!response.ok) {
@@ -792,10 +789,9 @@ export default function TasksPage() {
   async function fetchCategories() {
     if (!user) return;
     try {
+      const authHeaders = buildAuthHeaders(user);
       const response = await fetch('/api/tickets/categorias', {
-        headers: {
-          ...buildAuthHeaders(user),
-        },
+        headers: Object.keys(authHeaders).length > 0 ? authHeaders : undefined,
       });
 
       if (!response.ok) {
@@ -825,7 +821,7 @@ export default function TasksPage() {
       if (!exists && editingTask.ticketUid && editingTask.ticketTitle) {
         setTicketOptions(prev => [
           {
-            ticketUid: editingTask.ticketUid,
+            ticketUid: editingTask.ticketUid!,
             title: editingTask.ticketTitle || '',
             category: editingTask.ticketCategory || null,
             owner: editingTask.ticketOwner,
@@ -908,7 +904,7 @@ export default function TasksPage() {
           headers: {
             'Content-Type': 'application/json',
             ...buildAuthHeaders(user),
-          },
+          } as HeadersInit,
           body: JSON.stringify(payload),
         });
 
@@ -922,7 +918,7 @@ export default function TasksPage() {
           headers: {
             'Content-Type': 'application/json',
             ...buildAuthHeaders(user),
-          },
+          } as HeadersInit,
           body: JSON.stringify(payload),
         });
 
@@ -949,11 +945,10 @@ export default function TasksPage() {
 
     try {
       setSubmitting(true);
+      const authHeaders = buildAuthHeaders(user);
       const response = await fetch(`/api/tasks/${task.id}`, {
         method: 'DELETE',
-        headers: {
-          ...buildAuthHeaders(user),
-        },
+        headers: Object.keys(authHeaders).length > 0 ? authHeaders : undefined,
       });
 
       if (!response.ok) {
@@ -993,7 +988,7 @@ export default function TasksPage() {
         headers: {
           'Content-Type': 'application/json',
           ...buildAuthHeaders(user),
-        },
+        } as HeadersInit,
         body: JSON.stringify(payload),
       });
 
