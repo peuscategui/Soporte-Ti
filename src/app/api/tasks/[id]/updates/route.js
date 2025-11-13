@@ -15,12 +15,6 @@ const canAddTaskUpdate = (user) => {
 export async function GET(request, { params }) {
   try {
     const user = getUserFromRequest(request.headers);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     const { id } = params;
     const task = await getTaskById(id);
@@ -48,12 +42,6 @@ export async function POST(request, { params }) {
 
   try {
     const user = getUserFromRequest(clientHeaders);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     if (!canAddTaskUpdate(user)) {
       return NextResponse.json(

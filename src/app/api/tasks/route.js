@@ -16,12 +16,6 @@ const canManageTasks = (user) => {
 export async function GET(request) {
   try {
     const user = getUserFromRequest(request.headers);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     const { searchParams } = new URL(request.url);
     const boardId = searchParams.get('boardId') || undefined;
@@ -60,12 +54,6 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const user = getUserFromRequest(request.headers);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     if (!canManageTasks(user)) {
       return NextResponse.json(

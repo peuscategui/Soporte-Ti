@@ -16,12 +16,6 @@ const canManageTasks = (user) => {
 export async function PUT(request, { params }) {
   try {
     const user = getUserFromRequest(request.headers);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     if (!canManageTasks(user)) {
       return NextResponse.json(
@@ -88,12 +82,6 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const user = getUserFromRequest(request.headers);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     if (!canManageTasks(user)) {
       return NextResponse.json(

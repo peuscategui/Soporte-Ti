@@ -5,12 +5,6 @@ import { getUserFromRequest } from '@/lib/permissionValidator.js';
 export async function GET(request) {
   try {
     const user = getUserFromRequest(request.headers);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
 
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q') || '';
