@@ -1170,7 +1170,7 @@ async function searchTicketsForTasks({ queryText, limit = 25 }) {
       LIMIT $${params.length};
     `;
 
-    const result = await pool.query(query, params);
+    const result = await getPool().query(query, params);
     return result.rows;
   } catch (error) {
     console.error('Error buscando tickets para tareas:', error);
