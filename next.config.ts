@@ -11,11 +11,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   // Asegurar que los archivos .mjs se incluyan en el build standalone
-  experimental: {
-    outputFileTracingIncludes: {
-      '/api/tasks/**': ['./src/lib/database.mjs', './src/lib/validators.mjs'],
-      '/api/tasks/tickets/**': ['./src/lib/database.mjs'],
-    },
+  outputFileTracingIncludes: {
+    '/api/tasks/**': ['./src/lib/database.mjs', './src/lib/validators.mjs'],
+    '/api/tasks/tickets/**': ['./src/lib/database.mjs'],
   },
   // Variables de entorno públicas
   env: {
