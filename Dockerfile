@@ -37,8 +37,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/package*.json ./
-# Asegurar que los archivos .mjs se copien al standalone
-COPY --from=builder /app/src/lib/*.mjs ./src/lib/ 2>/dev/null || true
+# Asegurar que los archivos .mjs se copien al standalone (crear directorio primero)
+RUN mkdir -p ./src/lib
+COPY --from=builder /app/src/lib/database.mjs ./src/lib/database.mjs
+COPY --from=builder /app/src/lib/validators.mjs ./src/lib/validators.mjs
 
 # Cambiar permisos
 RUN chown -R nextjs:nodejs /app
