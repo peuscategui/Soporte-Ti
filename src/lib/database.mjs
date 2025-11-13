@@ -8,11 +8,29 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   port: process.env.DB_PORT || 5432,
+  max: 20, // Máximo de conexiones en el pool
+  idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
+  connectionTimeoutMillis: 2000, // Timeout de 2s al conectar
 });
+
+// Función auxiliar para validar y sanitizar parámetro de días
+function validateDays(days) {
+  if (typeof days === 'number') {
+    return Math.max(0, Math.min(365, Math.floor(days)));
+  }
+  const daysNum = parseInt(days, 10);
+  if (isNaN(daysNum) || daysNum < 0) {
+    return 7; // Valor por defecto
+  }
+  return Math.min(365, daysNum); // Límite máximo
+}
 
 // Función para obtener estadísticas de tickets con filtro de días
 async function getTicketStats(days = 7) {
   try {
+    // Validar y sanitizar parámetro de días
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         COUNT(*) as total_tickets,
@@ -112,6 +130,8 @@ async function getStatsByStatus() {
 // Función para obtener tickets por agente
 async function getTicketsByAgent(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         agente,
@@ -140,6 +160,8 @@ async function getTicketsByAgent(days = 7) {
 // Función para obtener tickets por área
 async function getTicketsByArea(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         area,
@@ -162,6 +184,8 @@ async function getTicketsByArea(days = 7) {
 // Función para obtener datos de tendencia por día
 async function getTicketsTrend(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         DATE(("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima') as fecha,
@@ -185,6 +209,8 @@ async function getTicketsTrend(days = 7) {
 // Función para obtener atenciones por agente con tendencia
 async function getAgentAttendances(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         agente,
@@ -218,6 +244,8 @@ async function getAgentAttendances(days = 7) {
 // Función para obtener top 10 áreas más atendidas
 async function getTopAreas(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         area,
@@ -245,6 +273,8 @@ async function getTopAreas(days = 7) {
 // Función para obtener top 10 categorías más frecuentes
 async function getTopCategorias(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         categoria,
@@ -272,6 +302,8 @@ async function getTopCategorias(days = 7) {
 // Función para obtener top 3 usuarios más atendidos
 async function getTopUsuarios(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         solicitante,
@@ -348,6 +380,8 @@ function normalizeSede(sede) {
 // Función para obtener atenciones por sede
 async function getSedeAttendances(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         sede,
@@ -393,6 +427,8 @@ async function getSedeAttendances(days = 7) {
 // Funciones para infraestructura
 async function getInfraestructuraStats(days = 7) {
   try {
+    days = validateDays(days);
+    
     const query = `
       SELECT 
         COUNT(*) as total_infraestructura,

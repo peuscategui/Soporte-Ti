@@ -7,7 +7,6 @@ import { CATEGORIAS_ESTANDAR, getCategoriasSugeridas } from '../../constants/cat
 import CategoriaDropdown from '../../components/CategoriaDropdown';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../hooks/useAuth';
-import ForceAdminButton from '../../components/ForceAdminButton';
 
 function TicketsPageContent() {
   const searchParams = useSearchParams();
@@ -142,10 +141,13 @@ function TicketsPageContent() {
     // Crear fecha desde la BD (que está en UTC)
     const fechaUTC = new Date(dateString);
     
-    // Convertir a zona horaria de Lima
-    const fechaLima = new Date(fechaUTC.toLocaleString('en-US', { timeZone: 'America/Lima' }));
-    
-    return fechaLima.toLocaleDateString('es-PE');
+    // Convertir directamente a zona horaria de Lima usando formato corto DD/MM/YYYY
+    return fechaUTC.toLocaleDateString('es-PE', {
+      timeZone: 'America/Lima',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
 
   // Función para formatear fecha y hora de la BD a zona horaria de Lima
@@ -155,10 +157,9 @@ function TicketsPageContent() {
     // Crear fecha desde la BD (que está en UTC)
     const fechaUTC = new Date(dateString);
     
-    // Convertir a zona horaria de Lima
-    const fechaLima = new Date(fechaUTC.toLocaleString('en-US', { timeZone: 'America/Lima' }));
-    
-    return fechaLima.toLocaleDateString('es-PE', {
+    // Convertir directamente a zona horaria de Lima usando toLocaleString
+    return fechaUTC.toLocaleString('es-PE', {
+      timeZone: 'America/Lima',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -1695,9 +1696,6 @@ function TicketsPageContent() {
           </div>
         </div>
       )}
-      
-      {/* Botón temporal para forzar configuración de administrador */}
-      <ForceAdminButton />
     </div>
   );
 }

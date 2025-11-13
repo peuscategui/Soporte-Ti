@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { ensureAdminRole } from '../utils/adminSetup';
 
 interface User {
   fullName: string;
@@ -17,22 +16,15 @@ export const useAuth = () => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // Asegurar que el usuario tenga rol de administrador
-        const correctedUser = ensureAdminRole();
+        // Intentar obtener información del usuario desde localStorage
+        const storedUser = localStorage.getItem('user');
         
-        if (correctedUser) {
-          setUser(correctedUser);
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
         } else {
-          // Intentar obtener información del usuario desde localStorage
-          const storedUser = localStorage.getItem('user');
-          
-          if (storedUser) {
-            const userData = JSON.parse(storedUser);
-            setUser(userData);
-          } else {
-            // Si no hay usuario almacenado, intentar obtenerlo desde Microsoft Graph
-            await loadUserFromMicrosoftGraph();
-          }
+          // Si no hay usuario almacenado, intentar obtenerlo desde Microsoft Graph
+          await loadUserFromMicrosoftGraph();
         }
       } catch (error) {
         console.error('Error cargando usuario:', error);
@@ -41,6 +33,7 @@ export const useAuth = () => {
           fullName: 'Usuario EFC',
           role: 'Administrador',
           email: 'usuario@efc.com.pe',
+          systemRole: 'admin'
         });
       } finally {
         setLoading(false);
@@ -87,7 +80,8 @@ export const useAuth = () => {
         role: 'Administrador',
         email: 'usuario@efc.com.pe',
         id: 'example-id',
-        department: 'Tecnología'
+        department: 'Tecnología',
+        systemRole: 'admin'
       };
       
       setUser(exampleUser);

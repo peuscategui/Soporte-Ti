@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '../../../../lib/database.mjs';
+import { validateTicketPermission, getUserFromRequest } from '../../../../lib/permissionValidator.js';
 
 export async function DELETE(request) {
   try {
+    // Obtener usuario desde headers
+    const user = getUserFromRequest(request.headers);
+    
     const body = await request.json();
     const { solicitante, solicitud, categoria, agente, area, sede } = body;
     
@@ -22,6 +26,19 @@ export async function DELETE(request) {
           error: 'Datos del ticket requeridos para eliminación' 
         },
         { status: 400 }
+      );
+    }
+
+    // Validar permisos para eliminar tickets
+    const ticketToDelete = { agente };
+    const deletePermission = validateTicketPermission(user, ticketToDelete, 'delete');
+    if (!deletePermission.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: deletePermission.reason || 'No tienes permisos para eliminar tickets' 
+        },
+        { status: 403 }
       );
     }
 
@@ -65,8 +82,7 @@ export async function DELETE(request) {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Error interno del servidor',
-        message: error.message 
+        error: 'Error interno del servidor'
       },
       { status: 500 }
     );

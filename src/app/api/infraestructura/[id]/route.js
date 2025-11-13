@@ -18,8 +18,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Error interno del servidor',
-        message: error.message 
+        error: 'Error interno del servidor'
       },
       { status: 500 }
     );
@@ -42,8 +41,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Error interno del servidor',
-        message: error.message 
+        error: 'Error interno del servidor'
       },
       { status: 500 }
     );
