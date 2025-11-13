@@ -4,20 +4,38 @@ const { Pool } = pkg;
 // Configuración de la base de datos
 // IMPORTANTE: Todas las credenciales deben venir de variables de entorno
 // No usar valores por defecto inseguros en producción
-if (!process.env.DB_USER || !process.env.DB_HOST || !process.env.DB_NAME || !process.env.DB_PASSWORD) {
-  throw new Error('Variables de entorno de base de datos requeridas: DB_USER, DB_HOST, DB_NAME, DB_PASSWORD');
-}
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  max: 20, // Máximo de conexiones en el pool
-  idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
-  connectionTimeoutMillis: 2000, // Timeout de 2s al conectar
-});
+let pool = null;
+
+function getPool() {
+  // Inicializar pool solo cuando se necesite (lazy initialization)
+  // Esto evita errores durante el build de Next.js cuando las variables de entorno no están disponibles
+  if (!pool) {
+    // Validar variables de entorno solo en runtime, no durante build
+    if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
+      if (!process.env.DB_USER || !process.env.DB_HOST || !process.env.DB_NAME || !process.env.DB_PASSWORD) {
+        // Solo lanzar error si estamos en runtime del servidor, no durante build
+        if (process.env.NEXT_PHASE !== 'phase-production-build') {
+          throw new Error('Variables de entorno de base de datos requeridas: DB_USER, DB_HOST, DB_NAME, DB_PASSWORD');
+        }
+        // Durante build, crear un pool dummy que no se usará
+        return null;
+      }
+    }
+
+    pool = new Pool({
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      max: 20, // Máximo de conexiones en el pool
+      idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
+      connectionTimeoutMillis: 2000, // Timeout de 2s al conectar
+    });
+  }
+  return pool;
+}
 
 // Función auxiliar para validar y sanitizar parámetro de días
 function validateDays(days) {
@@ -66,7 +84,7 @@ async function getTicketStats(days = 7) {
       WHERE ("Fecha de Registro" AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows[0];
   } catch (error) {
     console.error('Error obteniendo estadísticas de tickets:', error);
@@ -104,7 +122,7 @@ async function getRecentTickets(limit = 5) {
       LIMIT $1;
     `;
     
-    const result = await pool.query(query, [limit]);
+    const result = await getPool().query(query, [limit]);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo tickets recientes:', error);
@@ -125,7 +143,7 @@ async function getStatsByStatus() {
       ORDER BY count DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo estadísticas por estado:', error);
@@ -149,7 +167,7 @@ async function getTicketsByAgent(days = 7) {
       ORDER BY count DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     
     // Usar los nombres tal como están en la base de datos (sin normalización)
     const finalResult = result.rows
@@ -179,7 +197,7 @@ async function getTicketsByArea(days = 7) {
       ORDER BY count DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo tickets por área:', error);
@@ -204,7 +222,7 @@ async function getTicketsTrend(days = 7) {
       ORDER BY fecha ASC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo tendencia de tickets:', error);
@@ -232,7 +250,7 @@ async function getAgentAttendances(days = 7) {
       ORDER BY atenciones DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     
     // Usar los nombres tal como están en la base de datos (sin normalización)
     const finalResult = result.rows
@@ -268,7 +286,7 @@ async function getTopAreas(days = 7) {
       LIMIT 10;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo top áreas:', error);
@@ -297,7 +315,7 @@ async function getTopCategorias(days = 7) {
       LIMIT 10;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo top categorías:', error);
@@ -326,7 +344,7 @@ async function getTopUsuarios(days = 7) {
       LIMIT 3;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo top usuarios:', error);
@@ -403,7 +421,7 @@ async function getSedeAttendances(days = 7) {
       ORDER BY atenciones DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     console.log('Datos de sede obtenidos (antes de normalizar):', result.rows);
     
     // Normalizar y agrupar los datos
@@ -446,7 +464,7 @@ async function getInfraestructuraStats(days = 7) {
       ${days > 0 ? `WHERE (fecha_creacion AT TIME ZONE 'UTC') AT TIME ZONE 'America/Lima' >= (CURRENT_DATE - INTERVAL '${days} days')::timestamp` : ''};
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows[0];
   } catch (error) {
     console.error('Error obteniendo estadísticas de infraestructura:', error);
@@ -482,7 +500,7 @@ async function getAllInfraestructura() {
       ORDER BY fecha_creacion DESC;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo infraestructura:', error);
@@ -514,7 +532,7 @@ async function createInfraestructuraItem(data) {
       data.fechaResolucion || null
     ];
     
-    const result = await pool.query(query, values);
+    const result = await getPool().query(query, values);
     return result.rows[0];
   } catch (error) {
     console.error('Error creando item de infraestructura:', error);
@@ -555,7 +573,7 @@ async function updateInfraestructuraItem(id, data) {
       id
     ];
     
-    const result = await pool.query(query, values);
+    const result = await getPool().query(query, values);
     return result.rows[0];
   } catch (error) {
     console.error('Error actualizando item de infraestructura:', error);
@@ -571,7 +589,7 @@ async function deleteInfraestructuraItem(id) {
       RETURNING *;
     `;
     
-    const result = await pool.query(query, [id]);
+    const result = await getPool().query(query, [id]);
     return result.rows[0];
   } catch (error) {
     console.error('Error eliminando item de infraestructura:', error);
@@ -589,7 +607,7 @@ async function getAllUsuarios() {
       ORDER BY solicitante;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows.map(row => row.solicitante);
   } catch (error) {
     console.error('Error obteniendo usuarios:', error);
@@ -606,7 +624,7 @@ async function getAllAreas() {
       ORDER BY area;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     const rawAreas = result.rows.map(row => row.area);
     
     // Normalizar áreas para eliminar duplicados y variaciones
@@ -708,7 +726,7 @@ async function getAllAgentes() {
       ORDER BY agente;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     const rawAgentes = result.rows.map(row => row.agente);
     
     // Normalizar agentes para eliminar duplicados por capitalización
@@ -755,7 +773,7 @@ async function getAllCategorias() {
       ORDER BY categoria;
     `;
     
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows.map(row => row.categoria);
   } catch (error) {
     console.error('Error obteniendo categorías:', error);
@@ -771,7 +789,7 @@ async function getTaskBoards() {
       FROM public.task_boards
       ORDER BY created_at ASC;
     `;
-    const result = await pool.query(query);
+    const result = await getPool().query(query);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo tableros de tareas:', error);
@@ -785,7 +803,7 @@ async function getTaskBoardById(id) {
     FROM public.task_boards
     WHERE id = $1;
   `;
-  const result = await pool.query(queryText, [id]);
+  const result = await getPool().query(queryText, [id]);
   return result.rows[0] || null;
 }
 
@@ -796,7 +814,7 @@ async function createTaskBoard({ name, description }) {
     RETURNING *;
   `;
   const values = [name, description || null];
-  const result = await pool.query(queryText, values);
+  const result = await getPool().query(queryText, values);
   return result.rows[0];
 }
 
@@ -829,7 +847,7 @@ async function updateTaskBoard(id, data) {
     RETURNING *;
   `;
 
-  const result = await pool.query(queryText, values);
+  const result = await getPool().query(queryText, values);
   return result.rows[0];
 }
 
@@ -839,7 +857,7 @@ async function deleteTaskBoard(id) {
     WHERE id = $1
     RETURNING *;
   `;
-  const result = await pool.query(queryText, [id]);
+  const result = await getPool().query(queryText, [id]);
   return result.rows[0];
 }
 
@@ -873,7 +891,7 @@ async function getTasks({ boardId } = {}) {
       ORDER BY COALESCE(t.due_date, t.created_at) ASC;
     `;
 
-    const result = await pool.query(queryText, params);
+    const result = await getPool().query(queryText, params);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo tareas:', error);
@@ -887,7 +905,7 @@ async function getTaskById(id) {
     FROM public.tasks
     WHERE id = $1;
   `;
-  const result = await pool.query(queryText, [id]);
+  const result = await getPool().query(queryText, [id]);
   return result.rows[0] || null;
 }
 
@@ -943,7 +961,7 @@ async function createTask(data) {
     createdBy,
   ];
 
-  const result = await pool.query(queryText, values);
+  const result = await getPool().query(queryText, values);
   return result.rows[0];
 }
 
@@ -989,7 +1007,7 @@ async function updateTask(id, data) {
     RETURNING *;
   `;
 
-  const result = await pool.query(queryText, values);
+  const result = await getPool().query(queryText, values);
   return result.rows[0];
 }
 
@@ -999,7 +1017,7 @@ async function deleteTask(id) {
     WHERE id = $1
     RETURNING *;
   `;
-  const result = await pool.query(queryText, [id]);
+  const result = await getPool().query(queryText, [id]);
   return result.rows[0];
 }
 
@@ -1010,7 +1028,7 @@ async function getTaskUpdates(taskId) {
     WHERE task_id = $1
     ORDER BY created_at DESC;
   `;
-  const result = await pool.query(queryText, [taskId]);
+  const result = await getPool().query(queryText, [taskId]);
   return result.rows;
 }
 
@@ -1034,7 +1052,7 @@ async function getUpdatesForTasks(taskIds = []) {
       ORDER BY created_at DESC;
     `;
 
-    const result = await pool.query(queryText, validTaskIds);
+    const result = await getPool().query(queryText, validTaskIds);
     return result.rows;
   } catch (error) {
     console.error('Error obteniendo actualizaciones de tareas:', error);
@@ -1043,7 +1061,7 @@ async function getUpdatesForTasks(taskIds = []) {
 }
 
 async function addTaskUpdate(taskId, data) {
-  const client = await pool.connect();
+  const client = await getPool().connect();
 
   try {
     await client.query('BEGIN');
@@ -1108,7 +1126,7 @@ async function deleteTaskUpdate(id) {
     WHERE id = $1
     RETURNING *;
   `;
-  const result = await pool.query(queryText, [id]);
+  const result = await getPool().query(queryText, [id]);
   return result.rows[0];
 }
 
@@ -1118,7 +1136,7 @@ async function getTicketByUid(ticketUid) {
     FROM public.tksoporte
     WHERE ticket_uid = $1;
   `;
-  const result = await pool.query(queryText, [ticketUid]);
+  const result = await getPool().query(queryText, [ticketUid]);
   return result.rows[0] || null;
 }
 
@@ -1186,7 +1204,7 @@ async function searchTicketsForTasks({ queryText, limit = 25 }) {
           LIMIT $${params.length};
         `;
 
-        const result = await pool.query(query, params);
+        const result = await getPool().query(query, params);
         return result.rows;
       } catch (fallbackError) {
         console.error('Error en fallback de búsqueda de tickets:', fallbackError);
@@ -1200,7 +1218,11 @@ async function searchTicketsForTasks({ queryText, limit = 25 }) {
 // Función genérica para ejecutar queries
 async function query(text, params = []) {
   try {
-    const result = await pool.query(text, params);
+    const poolInstance = getPool();
+    if (!poolInstance) {
+      throw new Error('Pool de base de datos no inicializado');
+    }
+    const result = await poolInstance.query(text, params);
     return result;
   } catch (error) {
     console.error('Error ejecutando query:', error);
@@ -1209,7 +1231,7 @@ async function query(text, params = []) {
 }
 
 export {
-  pool,
+  getPool as pool,
   query,
   getTicketStats,
   getRecentTickets,
