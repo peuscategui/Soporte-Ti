@@ -42,7 +42,7 @@ RUN mkdir -p ./src/lib
 COPY --from=builder /app/src/lib/database.mjs ./src/lib/database.mjs
 COPY --from=builder /app/src/lib/validators.mjs ./src/lib/validators.mjs
 
-# Cambiar permisos
+# Cambiar permisos (incluyendo los archivos .mjs copiados)
 RUN chown -R nextjs:nodejs /app
 
 USER nextjs
