@@ -2,12 +2,18 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 // Configuración de la base de datos
+// IMPORTANTE: Todas las credenciales deben venir de variables de entorno
+// No usar valores por defecto inseguros en producción
+if (!process.env.DB_USER || !process.env.DB_HOST || !process.env.DB_NAME || !process.env.DB_PASSWORD) {
+  throw new Error('Variables de entorno de base de datos requeridas: DB_USER, DB_HOST, DB_NAME, DB_PASSWORD');
+}
+
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || '192.168.40.129',
-  database: process.env.DB_NAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || '5432', 10),
   max: 20, // Máximo de conexiones en el pool
   idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
   connectionTimeoutMillis: 2000, // Timeout de 2s al conectar
@@ -757,6 +763,440 @@ async function getAllCategorias() {
   }
 }
 
+// Funciones para tableros y tareas
+async function getTaskBoards() {
+  try {
+    const query = `
+      SELECT id, name, description, created_at, updated_at
+      FROM public.task_boards
+      ORDER BY created_at ASC;
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  } catch (error) {
+    console.error('Error obteniendo tableros de tareas:', error);
+    return [];
+  }
+}
+
+async function getTaskBoardById(id) {
+  const queryText = `
+    SELECT id, name, description, created_at, updated_at
+    FROM public.task_boards
+    WHERE id = $1;
+  `;
+  const result = await pool.query(queryText, [id]);
+  return result.rows[0] || null;
+}
+
+async function createTaskBoard({ name, description }) {
+  const queryText = `
+    INSERT INTO public.task_boards (name, description)
+    VALUES ($1, $2)
+    RETURNING *;
+  `;
+  const values = [name, description || null];
+  const result = await pool.query(queryText, values);
+  return result.rows[0];
+}
+
+async function updateTaskBoard(id, data) {
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  if (data.name !== undefined) {
+    fields.push(`name = $${index++}`);
+    values.push(data.name);
+  }
+
+  if (data.description !== undefined) {
+    fields.push(`description = $${index++}`);
+    values.push(data.description);
+  }
+
+  if (!fields.length) {
+    return getTaskBoardById(id);
+  }
+
+  fields.push(`updated_at = NOW()`);
+  values.push(id);
+
+  const queryText = `
+    UPDATE public.task_boards
+    SET ${fields.join(', ')}
+    WHERE id = $${index}
+    RETURNING *;
+  `;
+
+  const result = await pool.query(queryText, values);
+  return result.rows[0];
+}
+
+async function deleteTaskBoard(id) {
+  const queryText = `
+    DELETE FROM public.task_boards
+    WHERE id = $1
+    RETURNING *;
+  `;
+  const result = await pool.query(queryText, [id]);
+  return result.rows[0];
+}
+
+async function getTasks({ boardId } = {}) {
+  try {
+    const params = [];
+    let whereClause = '';
+
+    if (boardId) {
+      params.push(boardId);
+      whereClause = 'WHERE t.board_id = $1';
+    }
+
+    const queryText = `
+      SELECT 
+        t.*,
+        tk."Fecha de Registro" AS ticket_created_at,
+        tk.ticket_uid AS linked_ticket_uid,
+        tk.solicitud AS ticket_title,
+        tk.categoria AS ticket_category,
+        tk.solicitante AS ticket_owner,
+        tk.estado AS ticket_status,
+        COALESCE(COUNT(u.id), 0) AS updates_count,
+        COALESCE(SUM(u.users_served), 0) AS updates_users_served,
+        COALESCE(MAX(u.created_at), t.updated_at) AS last_update_at
+      FROM public.tasks t
+      LEFT JOIN public.task_updates u ON u.task_id = t.id
+      LEFT JOIN public.tksoporte tk ON tk.ticket_uid = t.ticket_uid
+      ${whereClause}
+      GROUP BY t.id, tk.ticket_uid, tk."Fecha de Registro", tk.solicitud, tk.categoria, tk.solicitante, tk.estado
+      ORDER BY COALESCE(t.due_date, t.created_at) ASC;
+    `;
+
+    const result = await pool.query(queryText, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Error obteniendo tareas:', error);
+    return [];
+  }
+}
+
+async function getTaskById(id) {
+  const queryText = `
+    SELECT *
+    FROM public.tasks
+    WHERE id = $1;
+  `;
+  const result = await pool.query(queryText, [id]);
+  return result.rows[0] || null;
+}
+
+async function createTask(data) {
+  const {
+    boardId = null,
+    ticketUid = null,
+    ticketCode = null,
+    title,
+    description = null,
+    category = null,
+    priority = 'Media',
+    status = 'Pendiente',
+    startDate = null,
+    dueDate = null,
+    usersServed = 0,
+    progress = 0,
+    createdBy = null,
+  } = data;
+
+  const queryText = `
+    INSERT INTO public.tasks (
+      board_id,
+      ticket_code,
+      ticket_uid,
+      title,
+      description,
+      category,
+      priority,
+      status,
+      start_date,
+      due_date,
+      users_served,
+      progress,
+      created_by
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING *;
+  `;
+
+  const values = [
+    boardId,
+    ticketCode,
+    ticketUid,
+    title,
+    description,
+    category,
+    priority,
+    status,
+    startDate,
+    dueDate,
+    usersServed,
+    progress,
+    createdBy,
+  ];
+
+  const result = await pool.query(queryText, values);
+  return result.rows[0];
+}
+
+async function updateTask(id, data) {
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  const mapping = {
+    boardId: 'board_id',
+    ticketCode: 'ticket_code',
+    ticketUid: 'ticket_uid',
+    title: 'title',
+    description: 'description',
+    category: 'category',
+    priority: 'priority',
+    status: 'status',
+    startDate: 'start_date',
+    dueDate: 'due_date',
+    usersServed: 'users_served',
+    progress: 'progress',
+    createdBy: 'created_by',
+  };
+
+  Object.entries(mapping).forEach(([key, column]) => {
+    if (data[key] !== undefined) {
+      fields.push(`${column} = $${index++}`);
+      values.push(data[key]);
+    }
+  });
+
+  if (!fields.length) {
+    return getTaskById(id);
+  }
+
+  fields.push(`updated_at = NOW()`);
+  values.push(id);
+
+  const queryText = `
+    UPDATE public.tasks
+    SET ${fields.join(', ')}
+    WHERE id = $${index}
+    RETURNING *;
+  `;
+
+  const result = await pool.query(queryText, values);
+  return result.rows[0];
+}
+
+async function deleteTask(id) {
+  const queryText = `
+    DELETE FROM public.tasks
+    WHERE id = $1
+    RETURNING *;
+  `;
+  const result = await pool.query(queryText, [id]);
+  return result.rows[0];
+}
+
+async function getTaskUpdates(taskId) {
+  const queryText = `
+    SELECT id, task_id, agent_name, comment, users_served, progress, created_at
+    FROM public.task_updates
+    WHERE task_id = $1
+    ORDER BY created_at DESC;
+  `;
+  const result = await pool.query(queryText, [taskId]);
+  return result.rows;
+}
+
+async function getUpdatesForTasks(taskIds = []) {
+  try {
+    if (!Array.isArray(taskIds) || !taskIds.length) {
+      return [];
+    }
+
+    // Filtrar valores válidos (UUIDs)
+    const validTaskIds = taskIds.filter(id => id != null);
+    if (!validTaskIds.length) {
+      return [];
+    }
+
+    const params = validTaskIds.map((_, index) => `$${index + 1}`).join(', ');
+    const queryText = `
+      SELECT id, task_id, agent_name, comment, users_served, progress, created_at
+      FROM public.task_updates
+      WHERE task_id IN (${params})
+      ORDER BY created_at DESC;
+    `;
+
+    const result = await pool.query(queryText, validTaskIds);
+    return result.rows;
+  } catch (error) {
+    console.error('Error obteniendo actualizaciones de tareas:', error);
+    return [];
+  }
+}
+
+async function addTaskUpdate(taskId, data) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const insertQuery = `
+      INSERT INTO public.task_updates (task_id, agent_name, comment, users_served, progress)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;
+    `;
+
+    const insertValues = [
+      taskId,
+      data.agentName,
+      data.comment || null,
+      data.usersServed ?? 0,
+      data.progress ?? 0,
+    ];
+
+    const insertResult = await client.query(insertQuery, insertValues);
+
+    const updateFields = [];
+    const updateValues = [];
+    let index = 1;
+
+    if (data.progress !== undefined) {
+      updateFields.push(`progress = $${index++}`);
+      updateValues.push(data.progress);
+    }
+
+    if (data.usersServed !== undefined) {
+      updateFields.push(`users_served = $${index++}`);
+      updateValues.push(data.usersServed);
+    }
+
+    if (updateFields.length) {
+      updateFields.push(`updated_at = NOW()`);
+      updateValues.push(taskId);
+
+      const updateQuery = `
+        UPDATE public.tasks
+        SET ${updateFields.join(', ')}
+        WHERE id = $${index};
+      `;
+
+      await client.query(updateQuery, updateValues);
+    }
+
+    await client.query('COMMIT');
+    return insertResult.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error agregando actualización de tarea:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteTaskUpdate(id) {
+  const queryText = `
+    DELETE FROM public.task_updates
+    WHERE id = $1
+    RETURNING *;
+  `;
+  const result = await pool.query(queryText, [id]);
+  return result.rows[0];
+}
+
+async function getTicketByUid(ticketUid) {
+  const queryText = `
+    SELECT ticket_uid, solicitud, categoria, solicitante, estado
+    FROM public.tksoporte
+    WHERE ticket_uid = $1;
+  `;
+  const result = await pool.query(queryText, [ticketUid]);
+  return result.rows[0] || null;
+}
+
+async function searchTicketsForTasks({ queryText, limit = 25 }) {
+  try {
+    const params = [];
+    let whereClause = '';
+
+    if (queryText && queryText.trim()) {
+      const search = `%${queryText.trim().toLowerCase()}%`;
+      params.push(search, search, search);
+      whereClause = `
+        WHERE LOWER(solicitud) LIKE $1 OR LOWER(categoria) LIKE $2 OR LOWER(solicitante) LIKE $3
+      `;
+    }
+
+    params.push(limit);
+
+    // Verificar si la columna ticket_uid existe, si no, usar COALESCE o NULL
+    const query = `
+      SELECT 
+        COALESCE(ticket_uid, gen_random_uuid()) AS ticket_uid,
+        solicitud, 
+        categoria, 
+        solicitante, 
+        estado, 
+        "Fecha de Registro" AS fecha_creacion
+      FROM public.tksoporte
+      ${whereClause}
+      ORDER BY "Fecha de Registro" DESC
+      LIMIT $${params.length};
+    `;
+
+    const result = await pool.query(query, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Error buscando tickets para tareas:', error);
+    // Si el error es porque falta la columna ticket_uid, intentar sin ella
+    if (error.message && error.message.includes('ticket_uid')) {
+      try {
+        const params = [];
+        let whereClause = '';
+
+        if (queryText && queryText.trim()) {
+          const search = `%${queryText.trim().toLowerCase()}%`;
+          params.push(search, search, search);
+          whereClause = `
+            WHERE LOWER(solicitud) LIKE $1 OR LOWER(categoria) LIKE $2 OR LOWER(solicitante) LIKE $3
+          `;
+        }
+
+        params.push(limit);
+
+        const query = `
+          SELECT 
+            NULL::UUID AS ticket_uid,
+            solicitud, 
+            categoria, 
+            solicitante, 
+            estado, 
+            "Fecha de Registro" AS fecha_creacion
+          FROM public.tksoporte
+          ${whereClause}
+          ORDER BY "Fecha de Registro" DESC
+          LIMIT $${params.length};
+        `;
+
+        const result = await pool.query(query, params);
+        return result.rows;
+      } catch (fallbackError) {
+        console.error('Error en fallback de búsqueda de tickets:', fallbackError);
+        return [];
+      }
+    }
+    return [];
+  }
+}
+
 // Función genérica para ejecutar queries
 async function query(text, params = []) {
   try {
@@ -790,6 +1230,22 @@ export {
   getAllUsuarios,
   getAllAreas,
   getAllAgentes,
-  getAllCategorias
+  getAllCategorias,
+  getTaskBoards,
+  getTaskBoardById,
+  createTaskBoard,
+  updateTaskBoard,
+  deleteTaskBoard,
+  getTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask,
+  getTaskUpdates,
+  getUpdatesForTasks,
+  getTicketByUid,
+  searchTicketsForTasks,
+  addTaskUpdate,
+  deleteTaskUpdate
 };
 

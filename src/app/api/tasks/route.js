@@ -44,8 +44,13 @@ export async function GET(request) {
     return NextResponse.json({ success: true, data: payload });
   } catch (error) {
     console.error('Error obteniendo tareas:', error);
+    console.error('Error details:', error.message, error.stack);
     return NextResponse.json(
-      { success: false, error: 'Error interno del servidor' },
+      { 
+        success: false, 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }
