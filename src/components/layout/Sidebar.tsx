@@ -16,13 +16,14 @@ import {
   ChevronRight,
   HeadphonesIcon,
   Settings,
+  ListChecks,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tickets', label: 'Tickets', icon: Ticket },
   { href: '/infraestructura', label: 'Infraestructura', icon: Building2 },
-  { href: '/areas', label: 'Áreas', icon: Building2 },
+  { href: '/tasks', label: 'Tareas', icon: ListChecks },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/knowledge', label: 'Base de Conocimientos', icon: BookOpen },
 ];
