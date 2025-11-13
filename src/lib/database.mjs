@@ -869,7 +869,7 @@ async function getTasks({ boardId } = {}) {
       LEFT JOIN public.task_updates u ON u.task_id = t.id
       LEFT JOIN public.tksoporte tk ON tk.ticket_uid = t.ticket_uid
       ${whereClause}
-      GROUP BY t.id, tk.ticket_uid, tk."Fecha de Registro", tk.solicitud, tk.categoria, tk.solicitante, tk.estado
+      GROUP BY t.id, t.board_id, t.ticket_code, t.ticket_uid, t.title, t.description, t.category, t.priority, t.status, t.start_date, t.due_date, t.users_served, t.progress, t.created_by, t.created_at, t.updated_at, tk.ticket_uid, tk."Fecha de Registro", tk.solicitud, tk.categoria, tk.solicitante, tk.estado
       ORDER BY COALESCE(t.due_date, t.created_at) ASC;
     `;
 
